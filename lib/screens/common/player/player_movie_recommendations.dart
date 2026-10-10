@@ -410,7 +410,7 @@ class _RecommendationThumbnail extends StatelessWidget {
           ? Icon(PhosphorIcons.filmStrip())
           : CachedNetworkImage(
               cacheManager: cacheProp(),
-              imageUrl: 'https://image.tmdb.org/t/p/w300$path',
+              imageUrl: 'https://jiofix.aadilsamjeed.workers.dev/im/w300$path',
               fit: BoxFit.cover,
               placeholder: (_, __) => const AppCachedImagePlaceholder(),
               errorWidget: (_, __, ___) => Icon(PhosphorIcons.filmStrip()),

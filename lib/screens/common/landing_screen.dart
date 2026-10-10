@@ -25,9 +25,19 @@ class LandingScreen extends StatefulWidget {
 }
 
 class _LandingScreenState extends State<LandingScreen> {
-  final _authService = FlixQuestAuthService();
+  FlixQuestAuthService? _authService;
   bool _loadingAnonymous = false;
   bool _loadingGoogle = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Lazy: don't touch Firebase until user actually tries to sign in.
+    try {
+      _authService = FlixQuestAuthService();
+    } catch (_) {
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +169,7 @@ class _LandingScreenState extends State<LandingScreen> {
         if (mounted) _showError(tr('check_connection'));
         return;
       }
-      await _authService.signInAnonymously();
+      await _authService?.signInAnonymously();
       settings.analytics.trackLogin('anonymous');
       // UserState's auth stream owns the handheld/TV destination.
     } catch (error) {
@@ -173,7 +183,7 @@ class _LandingScreenState extends State<LandingScreen> {
     if (_loadingAnonymous) return;
     setState(() => _loadingGoogle = true);
     try {
-      final credential = await _authService.signInWithGoogle();
+      final credential = await _authService?.signInWithGoogle();
       if (credential == null) return;
       settings.analytics.trackLogin('google');
       // UserState's auth stream swaps this landing screen for the app shell.

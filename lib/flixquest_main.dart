@@ -48,20 +48,23 @@ class FlixQuest extends StatefulWidget {
 
 class _FlixQuestState extends State<FlixQuest>
     with ChangeNotifier, WidgetsBindingObserver {
-  final FirebaseRemoteConfig _remoteConfig = FirebaseRemoteConfig.instance;
+  FirebaseRemoteConfig? _remoteConfig;
   StreamSubscription<RemoteConfigUpdate>? _remoteConfigSubscription;
   Timer? _widgetRefreshDebounce;
 
   Future<void> _initConfig() async {
     try {
-      await AppRemoteConfig.configure(_remoteConfig);
+      // Firebase may be unavailable in custom builds; skip remote config.
+      _remoteConfig = FirebaseRemoteConfig.instance;
+      await AppRemoteConfig.configure(_remoteConfig!);
       await _fetchConfig();
     } catch (_) {
       // The persisted app configuration remains usable while Firebase is
       // temporarily unavailable.
+      _remoteConfig = null;
     }
-    if (mounted) {
-      _remoteConfigSubscription = _remoteConfig.onConfigUpdated.listen(
+    if (mounted && _remoteConfig != null) {
+      _remoteConfigSubscription = _remoteConfig!.onConfigUpdated.listen(
         _onRemoteConfigUpdated,
         onError: (_) {},
       );
@@ -70,21 +73,27 @@ class _FlixQuestState extends State<FlixQuest>
 
   Future<void> _fetchConfig() async {
     try {
-      await _remoteConfig.fetchAndActivate();
+      await _remoteConfig?.fetchAndActivate();
     } catch (_) {
       // Cached/default values still provide a safe startup when offline.
     }
     if (mounted) {
-      AppRemoteConfig.apply(_remoteConfig, widget.appDependencyProvider);
+      final rc = _remoteConfig;
+      if (rc != null) {
+        AppRemoteConfig.apply(rc, widget.appDependencyProvider);
+      }
     }
     await requestNotificationPermissions();
   }
 
   Future<void> _onRemoteConfigUpdated(RemoteConfigUpdate update) async {
     try {
-      await _remoteConfig.activate();
+      await _remoteConfig?.activate();
       if (mounted) {
-        AppRemoteConfig.apply(_remoteConfig, widget.appDependencyProvider);
+        final rc = _remoteConfig;
+        if (rc != null) {
+          AppRemoteConfig.apply(rc, widget.appDependencyProvider);
+        }
       }
     } catch (_) {
       // Keep the last successfully activated configuration.
@@ -146,6 +155,7 @@ class _FlixQuestState extends State<FlixQuest>
     super.dispose();
   }
 
+  @override
   @override
   Widget build(BuildContext context) {
     // SystemChrome.setPreferredOrientations([

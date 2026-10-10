@@ -8,8 +8,12 @@ import '../services/recently_watched_sync_service.dart';
 
 class RecentProvider extends ChangeNotifier {
   RecentProvider({UpNextStore? upNextStore}) : _upNextStore = upNextStore {
-    RecentlyWatchedSyncService.instance.statusNotifier
-        .addListener(_onSyncStatusChanged);
+    // Guarded: sync service requires Firebase; skip if unavailable.
+    try {
+      RecentlyWatchedSyncService.instance.statusNotifier
+          .addListener(_onSyncStatusChanged);
+    } catch (_) {
+    }
   }
 
   final RecentlyWatchedMoviesController _movieController =

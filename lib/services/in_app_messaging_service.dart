@@ -7,15 +7,20 @@ class InAppMessagingService {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   static void initialize() {
-    // Listen for foreground FCM messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      _handleIncomingMessage(message);
-    });
+    // Guarded: FirebaseMessaging requires Firebase to be initialized.
+    // If Firebase failed (e.g. custom build without valid config), skip silently.
+    try {
+      // Listen for foreground FCM messages
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        _handleIncomingMessage(message);
+      });
 
-    // Listen for when app is opened via FCM message click
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      _handleIncomingMessage(message);
-    });
+      // Listen for when app is opened via FCM message click
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        _handleIncomingMessage(message);
+      });
+    } catch (_) {
+    }
   }
 
   static void _handleIncomingMessage(RemoteMessage message) {

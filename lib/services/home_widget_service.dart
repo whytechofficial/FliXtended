@@ -32,11 +32,11 @@ class HomeWidgetService {
   static final HomeWidgetService instance = HomeWidgetService._();
 
   static const _providers = <String>[
-    'dev.beamlak.flixquest_v2.widgets.MovieOfDayWidgetProvider',
-    'dev.beamlak.flixquest_v2.widgets.TvShowOfDayWidgetProvider',
-    'dev.beamlak.flixquest_v2.widgets.WellnessWidgetProvider',
-    'dev.beamlak.flixquest_v2.widgets.ContinueWatchingWidgetProvider',
-    'dev.beamlak.flixquest_v2.widgets.MyListWidgetProvider',
+    'dev.beamlak.flixquest_v2.jiofix.widgets.MovieOfDayWidgetProvider',
+    'dev.beamlak.flixquest_v2.jiofix.widgets.TvShowOfDayWidgetProvider',
+    'dev.beamlak.flixquest_v2.jiofix.widgets.WellnessWidgetProvider',
+    'dev.beamlak.flixquest_v2.jiofix.widgets.ContinueWatchingWidgetProvider',
+    'dev.beamlak.flixquest_v2.jiofix.widgets.MyListWidgetProvider',
   ];
 
   /// Each artwork is fetched at the size the view it fills actually needs.

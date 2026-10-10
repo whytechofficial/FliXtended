@@ -1407,6 +1407,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                 movieId: widget.movieMetadata!.movieId!,
                 scraperApiUrl: _resolveScraperApiUrl(),
                 full: true,
+                title: widget.movieMetadata?.movieName,
               )
             : ProviderLoader.loadTVFromProvider(
                 provider: provider!,
@@ -1415,6 +1416,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                 episodeNumber: widget.tvMetadata!.episodeNumber!,
                 scraperApiUrl: _resolveScraperApiUrl(),
                 full: true,
+                title: widget.tvMetadata?.seriesName,
               );
     await _initialDataSourceReady.future;
     if (!mounted || providerCode != _currentProviderCode) return;
@@ -1526,13 +1528,26 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     for (final subtitle in additional) {
       final url = subtitle.url?.trim();
       final language = subtitle.language ?? tr('not_available');
-      if (url == null || url.isEmpty || !keys.add('$url|$language')) continue;
-      merged.add(BetterPlayerSubtitlesSource(
-        type: BetterPlayerSubtitlesSourceType.network,
-        urls: [url],
-        name: language,
-        headers: subtitle.headers,
-      ));
+      final content = subtitle.content;
+      if ((url == null || url.isEmpty) && (content == null || content.isEmpty)) {
+        continue;
+      }
+      final key = '${url ?? 'memory'}|$language';
+      if (!keys.add(key)) continue;
+      if (content != null && content.isNotEmpty) {
+        merged.add(BetterPlayerSubtitlesSource(
+          type: BetterPlayerSubtitlesSourceType.memory,
+          content: content,
+          name: language,
+        ));
+      } else {
+        merged.add(BetterPlayerSubtitlesSource(
+          type: BetterPlayerSubtitlesSourceType.network,
+          urls: [url!],
+          name: language,
+          headers: subtitle.headers,
+        ));
+      }
     }
     return merged;
   }
@@ -2646,6 +2661,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                     provider: provider,
                     movieId: widget.movieMetadata!.movieId!,
                     scraperApiUrl: _resolveScraperApiUrl(),
+                    title: widget.movieMetadata?.movieName,
                   )
                 : ProviderLoader.loadTVFromProvider(
                     provider: provider,
@@ -2653,6 +2669,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                     seasonNumber: widget.tvMetadata!.seasonNumber!,
                     episodeNumber: widget.tvMetadata!.episodeNumber!,
                     scraperApiUrl: _resolveScraperApiUrl(),
+                    title: widget.tvMetadata?.seriesName,
                   );
         final result = await resultFuture;
         if (!result.success || result.videoLinks?.isEmpty != false) {
@@ -2663,12 +2680,19 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
 
         final subtitles = <BetterPlayerSubtitlesSource>[
           for (final subtitle in result.subtitleLinks ?? const [])
-            BetterPlayerSubtitlesSource(
-              type: BetterPlayerSubtitlesSourceType.network,
-              urls: [subtitle.url ?? ''],
-              name: subtitle.language ?? tr('not_available'),
-              headers: subtitle.headers,
-            ),
+            if (subtitle.content != null && subtitle.content!.isNotEmpty)
+              BetterPlayerSubtitlesSource(
+                type: BetterPlayerSubtitlesSourceType.memory,
+                content: subtitle.content,
+                name: subtitle.language ?? tr('not_available'),
+              )
+            else
+              BetterPlayerSubtitlesSource(
+                type: BetterPlayerSubtitlesSourceType.network,
+                urls: [subtitle.url ?? ''],
+                name: subtitle.language ?? tr('not_available'),
+                headers: subtitle.headers,
+              ),
         ];
         source = ProviderVideoSource(
           providerCode: providerCode,
@@ -3161,7 +3185,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                         : CachedNetworkImage(
                             cacheManager: cacheProp(),
                             imageUrl:
-                                'https://image.tmdb.org/t/p/w185${season.posterPath}',
+                                'https://jiofix.aadilsamjeed.workers.dev/im/w185${season.posterPath}',
                             fit: BoxFit.cover,
                             placeholder: (_, __) =>
                                 const AppCachedImagePlaceholder(),
@@ -3781,7 +3805,7 @@ class _TvNextEpisodeOverlay extends StatelessWidget {
                                   ),
                                 )
                               : Image.network(
-                                  'https://image.tmdb.org/t/p/w300${episode.stillPath}',
+                                  'https://jiofix.aadilsamjeed.workers.dev/im/w300${episode.stillPath}',
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) =>
                                       ColoredBox(color: placeholder),
@@ -4504,7 +4528,7 @@ class _PortraitMediaThumbnail extends StatelessWidget {
           ? Icon(fallbackIcon)
           : CachedNetworkImage(
               cacheManager: cacheProp(),
-              imageUrl: 'https://image.tmdb.org/t/p/w300$path',
+              imageUrl: 'https://jiofix.aadilsamjeed.workers.dev/im/w300$path',
               fit: BoxFit.cover,
               placeholder: (_, __) => const AppCachedImagePlaceholder(),
               errorWidget: (_, __, ___) => Icon(fallbackIcon),

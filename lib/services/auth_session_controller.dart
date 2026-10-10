@@ -20,12 +20,17 @@ class AuthSessionController {
   void initialize([FirebaseAuth? firebaseAuth]) {
     if (_authSubscription != null) return;
 
-    final auth = firebaseAuth ?? FirebaseAuth.instance;
-    setAuthenticatedUserId(auth.currentUser?.uid);
-    _authSubscription = auth.userChanges().listen(
-      (_) => setAuthenticatedUserId(auth.currentUser?.uid),
-      onError: (_) => setAuthenticatedUserId(auth.currentUser?.uid),
-    );
+    try {
+      final auth = firebaseAuth ?? FirebaseAuth.instance;
+      setAuthenticatedUserId(auth.currentUser?.uid);
+      _authSubscription = auth.userChanges().listen(
+        (_) => setAuthenticatedUserId(auth.currentUser?.uid),
+        onError: (_) => setAuthenticatedUserId(auth.currentUser?.uid),
+      );
+    } catch (_) {
+      // Firebase not available — stay unauthenticated.
+      setAuthenticatedUserId(null);
+    }
   }
 
   void setAuthenticatedUserId(String? value) {

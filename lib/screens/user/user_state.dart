@@ -69,9 +69,12 @@ class _UserStateState extends State<UserState> {
         final previewTvHome =
             widget.devicePresentation == DevicePresentation.television &&
                 TvDebugOptions.previewHomeShell;
+        // JioFix: Firebase is now wired with a real project, so the auth
+        // gate follows the actual session. Signed-out users land on the
+        // login screen; guests and signed-in users go straight home.
         return presentationShellFor(
           devicePresentation: widget.devicePresentation,
-          isAuthenticated: isAuthenticated || previewTvHome,
+          isAuthenticated: isAuthenticated,
         );
       },
     );

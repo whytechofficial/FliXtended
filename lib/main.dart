@@ -30,7 +30,9 @@ import 'tv/platform/device_presentation_detector.dart';
 
 @pragma('vm:entry-point')
 Future<void> _messageHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {}
 }
 
 bool isTablet(BuildContext context) {
@@ -43,8 +45,30 @@ SettingsProvider settingsProvider = SettingsProvider();
 RecentProvider recentProvider = RecentProvider();
 BookmarkProvider bookmarkProvider = BookmarkProvider();
 AppDependencyProvider appDependencyProvider = AppDependencyProvider();
-WellnessProvider wellnessProvider = WellnessProvider.instance;
-final Future<FirebaseApp> _initialization = Firebase.initializeApp();
+// WellnessProvider moved to local to avoid top-level Firebase access.
+bool _firebaseReady = false;
+Future<void> _initFirebase() async {
+  try {
+    // Timeout after 5 seconds — if Firebase hangs (no network/play services),
+    // don't block app startup.
+    await Firebase.initializeApp().timeout(const Duration(seconds: 5));
+    _firebaseReady = true;
+  } catch (e) {
+    // Try with dummy options so FirebaseAuth.instance etc. don't throw
+    // during widget creation. The app won't use Firebase features.
+    try {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: 'dummy',
+          appId: 'dummy',
+          messagingSenderId: 'dummy',
+          projectId: 'dummy',
+        ),
+      ).timeout(const Duration(seconds: 5));
+    } catch (e2) {
+    }
+  }
+}
 
 bool _isRecoverableImageError(FlutterErrorDetails details) {
   final context = details.context?.toString() ?? '';
@@ -69,23 +93,32 @@ Future<DevicePresentation> appInitialize({
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Firebase-dependent services and providers must not be accessed until the
-  // default app has finished initializing.
-  await _initialization;
+  // default app has finished initializing. Wrapped so the app still launches
+  // if Firebase config is missing/invalid (e.g. custom builds).
+  await _initFirebase();
 
   // Surface uncaught Dart and platform errors to Crashlytics. Installed only
   // after Firebase initialization so the recorder is always ready.
+  // Guarded: Crashlytics is only available if Firebase initialized successfully.
   FlutterError.onError = (details) {
     if (_isRecoverableImageError(details)) return;
-    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    if (!_firebaseReady) return;
+    try {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    } catch (_) {}
   };
   PlatformDispatcher.instance.onError = (error, stackTrace) {
-    FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
+    if (_firebaseReady) {
+      try {
+        FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
+      } catch (_) {}
+    }
     return true;
   };
 
-  final devicePresentation = await resolveDevicePresentation(
-    detector: devicePresentationDetector,
-  );
+  // Skip MethodChannel on startup (may race with native handler registration).
+  // Default to handheld; TV mode can be detected later if needed.
+  final devicePresentation = DevicePresentation.handheld;
 
   // Initialize MediaKit for video playback with multiple codec support
   // MediaKit.ensureInitialized();
@@ -94,7 +127,7 @@ Future<DevicePresentation> appInitialize({
   // This is CRITICAL for handling ungraceful app termination (force-close, system kill)
   // When the app is killed while streaming in landscape mode, this ensures
   // orientation is reset on next app launch since dispose() never gets called
-  SystemChrome.setPreferredOrientations([
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
     DeviceOrientation.landscapeLeft,
@@ -113,13 +146,27 @@ Future<DevicePresentation> appInitialize({
   sharedPrefsSingleton = await SharedPreferencesSingleton.getInstance();
   StartIoAdsService.instance
       .setTelevision(devicePresentation == DevicePresentation.television);
-  await clearVideoPlaybackCache();
-  FirebaseMessaging.onBackgroundMessage(_messageHandler);
-  await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
+  try {
+    await clearVideoPlaybackCache().timeout(const Duration(seconds: 10));
+  } catch (_) {}
+  // Guarded: requires Firebase to be initialized.
+  if (_firebaseReady) {
+    try {
+      FirebaseMessaging.onBackgroundMessage(_messageHandler);
+    } catch (_) {}
+  }
+  // Timeout: don't let downloader init hang startup.
+  try {
+    await FlutterDownloader.initialize(debug: true, ignoreSsl: true)
+        .timeout(const Duration(seconds: 10));
+  } catch (_) {}
 
   await settingsProvider.getCurrentThemeMode();
   await settingsProvider.getCurrentMaterial3Mode();
-  await settingsProvider.initMixpanel();
+  // Timeout: Mixpanel init does network I/O, don't hang startup.
+  try {
+    await settingsProvider.initMixpanel().timeout(const Duration(seconds: 10));
+  } catch (_) {}
   await settingsProvider.getCurrentAdultMode();
   await settingsProvider.getCurrentDefaultScreen();
   await settingsProvider.getCurrentImageQuality();
@@ -145,10 +192,19 @@ Future<DevicePresentation> appInitialize({
   await settingsProvider.getPlayerAmbientGlowEnabled();
   await settingsProvider.getAutoLoadSources();
   settingsProvider.completeHydration();
-  await recentProvider.fetchMovies();
-  await recentProvider.fetchEpisodes();
-  await bookmarkProvider.fetchBookmarks();
-  await wellnessProvider.initialize();
+  try {
+    await recentProvider.fetchMovies().timeout(const Duration(seconds: 10));
+  } catch (_) {}
+  try {
+    await recentProvider.fetchEpisodes().timeout(const Duration(seconds: 10));
+  } catch (_) {}
+  try {
+    await bookmarkProvider.fetchBookmarks().timeout(const Duration(seconds: 10));
+  } catch (_) {}
+  try {
+    final wp = WellnessProvider.instance;
+    await wp.initialize().timeout(const Duration(seconds: 15));
+  } catch (_) {}
   await appDependencyProvider.getFlixQuestLogo();
   await appDependencyProvider.getOccasionalTheme();
   await appDependencyProvider.getAmbientMode();
@@ -156,14 +212,27 @@ Future<DevicePresentation> appInitialize({
   await appDependencyProvider.getTmdbProxy();
   await appDependencyProvider.getUpdateConfiguration();
 
-  await BookmarkSyncService.instance.init();
-  await RecentlyWatchedSyncService.instance.init();
+  // Sync services require Firebase. Skip if not available.
+  if (_firebaseReady) {
+    try {
+      await BookmarkSyncService.instance.init().timeout(const Duration(seconds: 10));
+    } catch (_) {}
+    try {
+      await RecentlyWatchedSyncService.instance.init().timeout(const Duration(seconds: 10));
+    } catch (_) {}
+  } else {
+  }
 
   return devicePresentation;
 }
 
 void main() async {
-  final devicePresentation = await appInitialize();
+  final devicePresentation = await appInitialize().timeout(
+    const Duration(seconds: 30),
+    onTimeout: () {
+      return DevicePresentation.handheld;
+    },
+  );
   HttpOverrides.global = MyHttpOverrides();
   HomeWidgetNavigationService.configure(
     source: () => (
@@ -172,7 +241,24 @@ void main() async {
       proxy: appDependencyProvider.tmdbProxy,
     ),
   );
-  await MediaLinkNavigationService.initialize();
+  try {
+    await MediaLinkNavigationService.initialize().timeout(
+      const Duration(seconds: 10),
+    );
+  } catch (_) {}
+  HttpOverrides.global = MyHttpOverrides();
+  HomeWidgetNavigationService.configure(
+    source: () => (
+      language: settingsProvider.appLanguage,
+      useProxy: settingsProvider.enableProxy,
+      proxy: appDependencyProvider.tmdbProxy,
+    ),
+  );
+  try {
+    await MediaLinkNavigationService.initialize().timeout(
+      const Duration(seconds: 10),
+    );
+  } catch (_) {}
   runApp(EasyLocalization(
     supportedLocales: Translation.all,
     path: 'assets/translations',

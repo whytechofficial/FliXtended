@@ -7,8 +7,12 @@ import '../services/bookmark_sync_service.dart';
 
 class BookmarkProvider extends ChangeNotifier {
   BookmarkProvider() {
-    BookmarkSyncService.instance.statusNotifier
-        .addListener(_onSyncStatusChanged);
+    // Guarded: sync service requires Firebase; skip if unavailable.
+    try {
+      BookmarkSyncService.instance.statusNotifier
+          .addListener(_onSyncStatusChanged);
+    } catch (_) {
+    }
   }
 
   final MovieDatabaseController _movieDb = MovieDatabaseController();

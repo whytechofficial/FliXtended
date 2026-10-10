@@ -69,10 +69,15 @@ class WellnessProvider extends ChangeNotifier {
     _syncService = WellnessSyncService(database: _database);
     _syncService.status.addListener(notifyListeners);
     _syncService.lastSynced.addListener(notifyListeners);
-    await _applyUser(FirebaseAuth.instance.currentUser, sync: false);
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
-          (user) => unawaited(_applyUser(user)),
-        );
+    // Guarded: FirebaseAuth requires Firebase to be initialized.
+    // If Firebase failed (e.g. custom build), skip auth silently.
+    try {
+      await _applyUser(FirebaseAuth.instance.currentUser, sync: false);
+      _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
+            (user) => unawaited(_applyUser(user)),
+          );
+    } catch (_) {
+    }
     if (canSync) unawaited(_autoSync());
   }
 
