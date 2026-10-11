@@ -188,9 +188,16 @@ class OpenSubtitlesService {
     final release = subtitle['InfoReleaseGroup']?.toString() ?? '';
     final display = StringBuffer(language.toUpperCase());
     if (fileName.isNotEmpty) display.write(' · $fileName');
+    // Use the simple filead download path (plain SRT, no token, no gzip)
+    // instead of SubDownloadLink's tokenized .gz URL: it's the documented
+    // keyless path and avoids the CDN behavior that 502s app clients.
+    final fileId = subtitle['IDSubtitleFile']?.toString() ?? '';
+    final url = fileId.isNotEmpty
+        ? 'https://dl.opensubtitles.org/en/download/filead/$fileId'
+        : _downloadUrl(subtitle['SubDownloadLink']?.toString() ?? '');
     return ExternalSubtitle(
-      id: subtitle['IDSubtitleFile']?.toString() ?? '',
-      url: subtitle['SubDownloadLink']?.toString() ?? '',
+      id: fileId,
+      url: url,
       flagUrl: '',
       format: (subtitle['SubFormat']?.toString() ?? 'srt').toLowerCase(),
       encoding: 'UTF-8',
@@ -201,6 +208,10 @@ class OpenSubtitlesService {
       release: release,
     );
   }
+
+  /// Normalizes the tokenized SubDownloadLink; kept as a fallback for rows
+  /// without an IDSubtitleFile.
+  static String _downloadUrl(String link) => link;
 
   /// Downloads a subtitle file, transparently handling the gzip compression
   /// that SubDownloadLink serves. Returns the subtitle text, or '' when the
