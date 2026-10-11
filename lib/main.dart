@@ -22,11 +22,11 @@ import 'provider/wellness_provider.dart';
 import 'services/bookmark_sync_service.dart';
 import 'services/recently_watched_sync_service.dart';
 import 'services/media_link_navigation_service.dart';
+import 'services/device_presentation_service.dart';
 import 'services/start_io_ads_service.dart';
 import 'services/home_widget_navigation_service.dart';
 import 'singleton/sharedpreferences_singleton.dart';
 import 'tv/platform/device_presentation.dart';
-import 'tv/platform/device_presentation_detector.dart';
 
 @pragma('vm:entry-point')
 Future<void> _messageHandler(RemoteMessage message) async {
@@ -144,8 +144,12 @@ Future<DevicePresentation> appInitialize({
   // matches the binary instead of a hardcoded string that drifts.
   currentAppVersion = (await PackageInfo.fromPlatform()).version;
   sharedPrefsSingleton = await SharedPreferencesSingleton.getInstance();
+  await settingsProvider.getCurrentAppMode();
+  DevicePresentationService.instance.isTelevision =
+      settingsProvider.appMode.resolve(devicePresentation) ==
+          DevicePresentation.television;
   StartIoAdsService.instance
-      .setTelevision(devicePresentation == DevicePresentation.television);
+      .setTelevision(DevicePresentationService.instance.isTelevision);
   try {
     await clearVideoPlaybackCache().timeout(const Duration(seconds: 10));
   } catch (_) {}
@@ -190,6 +194,7 @@ Future<DevicePresentation> appInitialize({
   await settingsProvider.getEnableNextEpisodeButton();
   await settingsProvider.getIntroDbSettings();
   await settingsProvider.getPlayerAmbientGlowEnabled();
+  await settingsProvider.getAutoPipOnLeave();
   await settingsProvider.getAutoLoadSources();
   settingsProvider.completeHydration();
   try {

@@ -1,3 +1,5 @@
+import 'package:flixquest/widgets/adsterra_playback_gate.dart';
+import 'package:flixquest/widgets/playback_action.dart';
 // ignore_for_file: deprecated_member_use
 
 import 'dart:async';
@@ -36,18 +38,24 @@ import '../../api/endpoints.dart';
 import '../../ui_components/app_ui_components.dart';
 import '../../services/stream_intro_service.dart';
 import '../../services/introdb_service.dart';
+import '../../services/offline_download_service.dart';
 import '../../services/stream_size_estimator.dart';
 import '../movie/movie_video_loader.dart';
 import '../tv/tv_video_loader.dart';
 import 'player/player_data_management.dart';
+import 'player/player_preroll_ad.dart';
 import 'player/player_completion_detector.dart';
 import 'player/tv_subtitle_timing_panel.dart';
+import 'player/player_subtitle_timing_sheet.dart';
 import 'player/player_external_subtitles.dart';
 import 'player/player_local_subtitles.dart';
 import 'player/player_episode_selection.dart';
 import 'player/player_movie_recommendations.dart';
 import 'player/player_next_episode_policy.dart';
 import 'player/player_sheet_ui.dart';
+import 'player/player_feedback_ui.dart';
+import '../../design/app_tokens.dart';
+import 'player/player_watch_page.dart';
 import 'player/player_strings.dart';
 import 'download_selection_sheets.dart';
 
@@ -134,6 +142,20 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
   bool _showNextEpisodeButton = false;
   bool _nextEpisodeButtonDismissed = false;
   bool _preRollActive = false;
+
+  /// The video ad playing as the pre-roll, if any. Its timeline is separate
+  /// from the content's: progress, subtitles and resume points ignore it.
+  late final PlayerPrerollAd _prerollAd =
+      PlayerPrerollAd(television: widget.useTvControls);
+
+  /// A recently-watched save requested during the pre-roll, when the player's
+  /// position belongs to the ad. It runs once the content starts.
+  bool _recentInsertPending = false;
+
+  /// Between the end of a pre-roll and the content's own initialized event.
+  /// The content's duration is unknown until then; nothing may measure the
+  /// content's position against a duration in the meantime.
+  bool _awaitingContentAfterPreRoll = false;
   IntroDbTimings _introDbTimings = IntroDbTimings.empty;
   IntroDbSegment? _activeIntroDbSegment;
   final Set<String> _skippedIntroDbSegments = <String>{};
@@ -169,6 +191,8 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
   bool _tvSubtitleTimingOpen = false;
   int? _portraitBrowsedSeasonNumber;
   bool _portraitSeasonLoading = false;
+  bool _startingContent = false;
+  OverlayEntry? _contentSwitchLoading;
   Orientation? _lastScreenOrientation;
   bool _landscapeFullscreenRequestPending = false;
 
@@ -317,6 +341,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         enableNextEpisodeButton: widget.mediaType == MediaType.tvShow &&
             widget.settings.enableNextEpisodeButton,
         introDbSkipButtonBuilder: _buildIntroDbSkipButton,
+        preRollOverlayBuilder: _buildPrerollOverlay,
         introDbSkipAvailable: _canSkipIntroDbSegment,
         onIntroDbSkip: _skipActiveIntroDbSegment,
         // The native MediaRouteButton currently crashes on some Android
@@ -395,7 +420,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         quickActions: [
           if (widget.availableProviders?.isNotEmpty == true)
             BetterPlayerOverflowMenuItem(
-              PhosphorIcons.arrowsLeftRight(),
+              PhosphorIcons.hardDrives(),
               tr('switch_provider'),
               widget.useTvControls
                   ? _showTvProviderMenu
@@ -446,8 +471,8 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
             showPlaceholderUntilPlay: true,
             allowedScreenSleep: false,
             autoDetectFullscreenAspectRatio: !widget.useTvControls,
-            errorBuilder: (context, errorMessage) =>
-                _buildCustomPlayerErrorWidget(context, errorMessage),
+            errorBuilder: (context, _) =>
+                _buildCustomPlayerErrorWidget(context),
             subtitlesConfiguration: buildPlayerSubtitleConfiguration(
               backgroundColor: widget.settings.subtitleBackgroundColor,
               foregroundColor: widget.settings.subtitleForegroundColor,
@@ -469,6 +494,8 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     }
     settings.addListener(_syncAmbientGlowSetting);
     _syncAmbientGlowSetting();
+    settings.addListener(_syncAutoPipSetting);
+    _syncAutoPipSetting();
     _betterPlayerController.setBetterPlayerGlobalKey(_betterPlayerKey);
     _betterPlayerController.addEventsListener(_onAnalyticsPlayerEvent);
     // Attach listeners before setup so native initialization and pre-roll
@@ -508,6 +535,16 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     );
   }
 
+  // Leaving the app (home button) moves a playing video into picture in
+  // picture, whether or not the player is full screen.
+  void _syncAutoPipSetting() {
+    unawaited(
+      _betterPlayerController.setAutoPictureInPicture(
+        !widget.useTvControls && settings.autoPipOnLeave,
+      ),
+    );
+  }
+
   Future<void> _setupInitialDataSource(
       BetterPlayerDataSource dataSource) async {
     final metadataElapsed = widget.mediaType == MediaType.movie
@@ -518,14 +555,30 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     final initialPosition =
         requestedPosition < Duration.zero ? Duration.zero : requestedPosition;
     try {
+      // The ad request runs alongside the intro lookup; neither waits on the
+      // other, and a missing ad never delays the content.
+      final adFuture = _prerollAd.load(_appDependencies.vastPreroll,
+          cancelled: () => !mounted);
       StreamIntroConfig intro = const StreamIntroConfig.disabled();
       try {
         intro = await _introService.fetch(_resolveScraperApiUrl());
       } catch (error) {
         debugPrint('[Player] Branded intro unavailable: $error');
       }
+      final prerollAd = await adFuture;
+      if (!mounted) return;
 
-      if (intro.enabled && intro.url != null) {
+      if (prerollAd != null) {
+        // The ad replaces the branded intro for this session: one pre-roll
+        // keeps the wait before the content short.
+        _preRollActive = true;
+        _prerollAd.start(prerollAd, _betterPlayerController);
+        await _betterPlayerController.setupDataSourceWithPreRoll(
+          preRollDataSource: PlayerPrerollAd.dataSource(prerollAd.media),
+          betterPlayerDataSource: dataSource,
+          contentStartPosition: initialPosition,
+        );
+      } else if (intro.enabled && intro.url != null) {
         _preRollActive = true;
         await _betterPlayerController.setupDataSourceWithPreRoll(
           preRollDataSource: _buildIntroDataSource(intro.url!),
@@ -551,6 +604,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       if (!_preRollActive) unawaited(_loadIntroDbTimings());
     } catch (error) {
       _preRollActive = false;
+      _prerollAd.finish('error');
       debugPrint('[Player] Initial stream setup failed: $error');
     } finally {
       if (!_initialDataSourceReady.isCompleted) {
@@ -558,6 +612,12 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       }
     }
   }
+
+  Widget? _buildPrerollOverlay(
+    BuildContext context,
+    BetterPlayerController controller,
+  ) =>
+      _prerollAd.overlay(context, onExit: _exitPlayer);
 
   BetterPlayerDataSource _buildIntroDataSource(Uri url) {
     return BetterPlayerDataSource(
@@ -599,12 +659,27 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         duration = _betterPlayerController
                 .videoPlayerController?.value.duration?.inSeconds ??
             duration;
-        _analyticsInitializationCount++;
+        final contentAfterPreRoll = _awaitingContentAfterPreRoll;
+        _awaitingContentAfterPreRoll = false;
         debugPrint(
           '[Player][IntroDB] player initialized '
-          'preRoll=$_preRollActive durationSeconds=$duration',
+          'preRoll=$_preRollActive afterPreRoll=$contentAfterPreRoll '
+          'durationSeconds=$duration',
         );
         if (!_preRollActive) unawaited(_loadIntroDbTimings());
+        if (contentAfterPreRoll) {
+          // The content behind a pre-roll is its first initialization, not a
+          // provider switch or recovery.
+          _trackPlaybackEvent('content_initialized');
+          if (_recentInsertPending) {
+            _recentInsertPending = false;
+            widget.mediaType == MediaType.movie
+                ? unawaited(insertRecentMovieData())
+                : unawaited(insertRecentEpisodeData());
+          }
+          break;
+        }
+        _analyticsInitializationCount++;
         _trackPlaybackEvent(
           _analyticsInitializationCount == 1 ? 'initialized' : 'reinitialized',
           startupMs:
@@ -612,25 +687,33 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         );
         break;
       case BetterPlayerEventType.preRollEnded:
+        _prerollAd.finish(
+          event.parameters?[BetterPlayerController.preRollEndReasonParameter]
+                  as String? ??
+              'completed',
+        );
         _preRollActive = false;
         _completionDetector.reset();
         _playbackCompletionHandled = false;
-        duration = _betterPlayerController
-                .videoPlayerController?.value.duration?.inSeconds ??
-            duration;
+        // The content's duration, IntroDB lookup and any deferred
+        // recently-watched save wait for its initialized event: after a Skip
+        // the content has not been prepared yet.
+        _awaitingContentAfterPreRoll = true;
+        duration = 0;
         _trackPlaybackEvent('pre_roll_ended');
         if (_betterPlayerController.videoPlayerController?.value.isPlaying ==
             true) {
           _wellnessTracker.play();
         }
-        unawaited(_loadIntroDbTimings());
         break;
       case BetterPlayerEventType.play:
+        if (_preRollActive) _prerollAd.onPlay();
         _analyticsPlayingStartedAt ??= DateTime.now();
         if (!_preRollActive) _wellnessTracker.play();
         _trackPlaybackEvent('play');
         break;
       case BetterPlayerEventType.pause:
+        if (_preRollActive) _prerollAd.onPause();
         _analyticsWasPlayingBeforeBuffering = false;
         _stopAnalyticsWatchClock();
         _wellnessTracker.pause();
@@ -676,6 +759,10 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         _handlePlaybackCompleted(source: 'native');
         break;
       case BetterPlayerEventType.setupDataSource:
+        // A provider switch replaces the sequence while the ad is showing.
+        if (!_betterPlayerController.isPreRollActive) {
+          _prerollAd.finish('closed');
+        }
         _completionDetector.reset();
         _playbackCompletionHandled = false;
         _introDbRequestId++;
@@ -1231,7 +1318,8 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     _phoneNextEpisodeCountdown = _endCountdown;
     _nextEpisodeOverlay = OverlayEntry(builder: _buildPhoneNextEpisodeCard);
     Overlay.of(context, rootOverlay: true).insert(_nextEpisodeOverlay!);
-    _phoneNextEpisodeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _phoneNextEpisodeTimer =
+        Timer.periodic(const Duration(seconds: 1), (timer) {
       final countdown = _phoneNextEpisodeCountdown;
       if (!mounted || countdown == null) {
         timer.cancel();
@@ -1266,9 +1354,10 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         }
         _hideNextEpisodeOverlay();
       },
-      onPlay: () {
-        _hideNextEpisodeOverlay();
-        unawaited(_playNextEpisodeFromControls());
+      busy: _startingContent,
+      onPlay: () async {
+        _phoneNextEpisodeTimer?.cancel();
+        await _playNextEpisodeFromControls();
       },
     );
   }
@@ -1688,7 +1777,16 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     });
   }
 
+  /// During the pre-roll the player's position and duration are the ad's, so
+  /// saving now would overwrite the resume point. Save once the content runs.
+  bool _deferRecentInsertDuringPreRoll() {
+    if (!_preRollActive && !_awaitingContentAfterPreRoll) return false;
+    _recentInsertPending = true;
+    return true;
+  }
+
   Future<void> insertRecentMovieData() async {
+    if (_deferRecentInsertDuringPreRoll()) return;
     await _dataManagement.insertRecentMovieData(
       context: context,
       betterPlayerController: _betterPlayerController,
@@ -1698,6 +1796,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
   }
 
   Future<void> insertRecentEpisodeData() async {
+    if (_deferRecentInsertDuringPreRoll()) return;
     await _dataManagement.insertRecentEpisodeData(
       context: context,
       betterPlayerController: _betterPlayerController,
@@ -1718,8 +1817,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     return navigator.overlay?.context ?? context;
   }
 
-  MovieStreamMetadata? get _movieMetadataForContentMenu =>
-      widget.movieMetadata;
+  MovieStreamMetadata? get _movieMetadataForContentMenu => widget.movieMetadata;
 
   TVStreamMetadata? get _tvMetadataForContentMenu {
     final metadata = widget.tvMetadata;
@@ -1962,8 +2060,11 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _hideContentSwitchLoading();
     _betterPlayerControllerInitialized = false;
+    _prerollAd.dispose();
     settings.removeListener(_syncAmbientGlowSetting);
+    settings.removeListener(_syncAutoPipSetting);
     final suppressionId = _occasionalEffectsSuppressionId;
     if (suppressionId != null) {
       _occasionalEffectsSuppressionId = null;
@@ -2288,7 +2389,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       tr('select_season'),
       [
         BetterPlayerTvMenuItem(
-          label: 'Loading episodes…',
+          label: '${tr('loading_episodes')}…',
           icon: PhosphorIcons.spinnerGap(),
           enabled: false,
           onSelected: () {},
@@ -2472,57 +2573,107 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     _clearTvNextEpisodePrompt();
   }
 
-  Future<void> _playTvEpisode(EpisodeMetadata episode) async {
-    _tvNextEpisodeTimer?.cancel();
-    if (mounted) {
-      setState(() {
-        _tvMenu = null;
-        _tvSubtitleTimingOpen = false;
-        _tvNextEpisode = null;
-        _tvNextEpisodeCountdown = null;
-      });
-    }
-    await _handleContentSwitch();
-    if (!mounted) return;
-    await Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => TVVideoLoader(
-          download: false,
-          useTvPlayer: widget.useTvControls,
-          onTvPlayerExit: widget.onTvPlayerExit,
-          metadata: _metadataForTvEpisode(episode),
+  Future<void> _startContent(Future<void> Function() action) async {
+    if (_startingContent || !mounted) return;
+    setState(() => _startingContent = true);
+    _nextEpisodeOverlay?.markNeedsBuild();
+    // Fullscreen controls live on a separate route. Show feedback above that
+    // route too while saving the current watch progress before navigation.
+    _contentSwitchLoading = OverlayEntry(
+      builder: (_) => const Positioned.fill(
+        child: AbsorbPointer(
+          child: ColoredBox(
+            color: Color(0x66000000),
+            child: Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          ),
         ),
       ),
     );
+    Navigator.of(context, rootNavigator: true)
+        .overlay!
+        .insert(_contentSwitchLoading!);
+    try {
+      await action();
+    } finally {
+      _hideContentSwitchLoading();
+      if (mounted) {
+        setState(() => _startingContent = false);
+        _nextEpisodeOverlay?.markNeedsBuild();
+      }
+    }
   }
 
-  Future<void> _playTvMovie(MovieRecommendation movie) async {
-    if (mounted) setState(() => _tvMenu = null);
-    await _handleContentSwitch();
-    if (!mounted) return;
-    final metadata = MovieStreamMetadata(
-      movieId: movie.movieId,
-      movieName: movie.title,
-      posterPath: movie.posterPath,
-      backdropPath: movie.backdropPath,
-      releaseDate: movie.releaseDate,
-      releaseYear: movie.releaseDate == null
-          ? null
-          : DateTime.tryParse(movie.releaseDate!)?.year,
-      isAdult: false,
-      elapsed: 0,
-    );
-    await Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => MovieVideoLoader(
-          download: false,
-          useTvPlayer: widget.useTvControls,
-          onTvPlayerExit: widget.onTvPlayerExit,
-          metadata: metadata,
-        ),
-      ),
-    );
+  void _hideContentSwitchLoading() {
+    _contentSwitchLoading?.remove();
+    _contentSwitchLoading?.dispose();
+    _contentSwitchLoading = null;
   }
+
+  Future<void> _playTvEpisode(EpisodeMetadata episode) =>
+      _startContent(() async {
+        _tvNextEpisodeTimer?.cancel();
+        if (mounted) {
+          setState(() {
+            _tvMenu = null;
+            _tvSubtitleTimingOpen = false;
+          });
+        }
+        await _handleContentSwitch();
+        if (!mounted) return;
+        _hideContentSwitchLoading();
+        _hideNextEpisodeOverlay();
+        setState(() {
+          _tvNextEpisode = null;
+          _tvNextEpisodeCountdown = null;
+        });
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (context) => AdsterraPlaybackGate.buildLoader(context,
+                television: widget.useTvControls,
+                builder: (context) => TVVideoLoader(
+                      download: false,
+                      useTvPlayer: widget.useTvControls,
+                      onTvPlayerExit: widget.onTvPlayerExit,
+                      metadata: _metadataForTvEpisode(episode),
+                    )),
+          ),
+        );
+      });
+
+  Future<void> _playTvMovie(MovieRecommendation movie) =>
+      _startContent(() async {
+        if (mounted) setState(() => _tvMenu = null);
+        await _handleContentSwitch();
+        if (!mounted) return;
+        _hideContentSwitchLoading();
+        _hideNextEpisodeOverlay();
+        final metadata = MovieStreamMetadata(
+          movieId: movie.movieId,
+          movieName: movie.title,
+          posterPath: movie.posterPath,
+          backdropPath: movie.backdropPath,
+          releaseDate: movie.releaseDate,
+          releaseYear: movie.releaseDate == null
+              ? null
+              : DateTime.tryParse(movie.releaseDate!)?.year,
+          isAdult: false,
+          elapsed: 0,
+        );
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (context) => AdsterraPlaybackGate.buildLoader(context,
+                television: widget.useTvControls,
+                builder: (context) => MovieVideoLoader(
+                      download: false,
+                      useTvPlayer: widget.useTvControls,
+                      onTvPlayerExit: widget.onTvPlayerExit,
+                      metadata: metadata,
+                    )),
+          ),
+        );
+      });
 
   TVStreamMetadata _metadataForTvEpisode(EpisodeMetadata episode) {
     final current = widget.tvMetadata!;
@@ -2680,19 +2831,12 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
 
         final subtitles = <BetterPlayerSubtitlesSource>[
           for (final subtitle in result.subtitleLinks ?? const [])
-            if (subtitle.content != null && subtitle.content!.isNotEmpty)
-              BetterPlayerSubtitlesSource(
-                type: BetterPlayerSubtitlesSourceType.memory,
-                content: subtitle.content,
-                name: subtitle.language ?? tr('not_available'),
-              )
-            else
-              BetterPlayerSubtitlesSource(
-                type: BetterPlayerSubtitlesSourceType.network,
-                urls: [subtitle.url ?? ''],
-                name: subtitle.language ?? tr('not_available'),
-                headers: subtitle.headers,
-              ),
+            BetterPlayerSubtitlesSource(
+              type: BetterPlayerSubtitlesSourceType.network,
+              urls: [subtitle.url ?? ''],
+              name: subtitle.language ?? tr('not_available'),
+              headers: subtitle.headers,
+            ),
         ];
         source = ProviderVideoSource(
           providerCode: providerCode,
@@ -2883,6 +3027,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
               Positioned.fill(
                 child: BetterPlayerTvMenu(
                   title: menu.title,
+                  strings: playerControlsStrings(),
                   items: menu.items,
                   onClose: _closeTvMenu,
                   accentColor: widget.colors.first,
@@ -2906,6 +3051,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                       ? tr('watch_credits')
                       : tr('cancel'),
                   onCancel: _dismissTvNextEpisodePrompt,
+                  busy: _startingContent,
                   onPlay: () => _playTvEpisode(nextEpisode),
                 ),
               ),
@@ -2949,161 +3095,241 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
   }
 
   Widget _buildPortraitInlineLayout(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final episodes = widget.tvMetadata?.seasonEpisodes ?? _contentMenuEpisodes;
-    final recommendations =
-        widget.movieMetadata?.recommendations ?? const <MovieRecommendation>[];
-    final isTv = widget.mediaType == MediaType.tvShow;
-    final title = isTv
-        ? widget.tvMetadata?.seriesName ?? ''
-        : widget.movieMetadata?.movieName ?? '';
-
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: BetterPlayer(
-              controller: _betterPlayerController,
-              key: _betterPlayerKey,
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
-              children: [
-                if (title.isNotEmpty)
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: colors.onSurface,
-                      fontFamily: 'FigtreeSB',
-                    ),
-                  ),
-                if (isTv && episodes.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  _buildPortraitSectionHeader(
-                    context,
-                    icon: PhosphorIcons.playlist(),
-                    title: tr(
-                      'season_episodes',
-                      namedArgs: {
-                        'season':
-                            '${widget.tvMetadata?.seasonNumber ?? episodes.first.seasonNumber}',
-                      },
-                    ),
-                    subtitle: tr(
-                      'episodes_count',
-                      namedArgs: {'count': '${episodes.length}'},
-                    ),
-                    action: (widget.tvMetadata?.allSeasons == null ||
-                            (widget.tvMetadata?.allSeasons?.length ?? 0) > 1)
-                        ? IconButton(
-                            tooltip: tr('select_season'),
-                            onPressed: _portraitSeasonLoading
-                                ? null
-                                : _showPortraitSeasonPicker,
-                            icon: _portraitSeasonLoading
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(PhosphorIcons.stack()),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  ...episodes.map((episode) {
-                    final current = episode.episodeNumber ==
-                            widget.tvMetadata?.episodeNumber &&
-                        episode.seasonNumber == widget.tvMetadata?.seasonNumber;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: PlayerChoiceCard(
-                        title:
-                            '${episode.episodeNumber}. ${episode.episodeName}',
-                        subtitle: _portraitEpisodeSubtitle(episode),
-                        description: episode.overview,
-                        selected: current,
-                        thumbnail: _PortraitMediaThumbnail(
-                          path: episode.stillPath,
-                          width: 124,
-                          height: 76,
-                          fallbackIcon: PhosphorIcons.filmStrip(),
-                        ),
-                        onTap: current ? null : () => _playTvEpisode(episode),
-                      ),
-                    );
-                  }),
-                ] else if (!isTv && recommendations.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  _buildPortraitSectionHeader(
-                    context,
-                    icon: PhosphorIcons.sparkle(),
-                    title: tr('recommended_movies'),
-                  ),
-                  const SizedBox(height: 8),
-                  ...recommendations.map((movie) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: PlayerChoiceCard(
-                          title: movie.title,
-                          subtitle: _portraitMovieSubtitle(movie),
-                          description: movie.overview,
-                          thumbnail: _PortraitMediaThumbnail(
-                            path: movie.backdropPath ?? movie.posterPath,
-                            width: 124,
-                            height: 76,
-                            fallbackIcon: PhosphorIcons.filmStrip(),
-                          ),
-                          onTap: () => _playTvMovie(movie),
-                        ),
-                      )),
-                ],
-              ],
-            ),
-          ),
-        ],
+    return PlayerWatchLayout(
+      video: BetterPlayer(
+        controller: _betterPlayerController,
+        key: _betterPlayerKey,
       ),
+      slivers: widget.mediaType == MediaType.tvShow
+          ? _seriesWatchSlivers()
+          : _movieWatchSlivers(),
     );
   }
 
-  Widget _buildPortraitSectionHeader(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    Widget? action,
-  }) {
-    final colors = BetterPlayerPanelColors.of(context);
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: colors.secondary),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
-              color: colors.foreground,
-              fontFamily: 'FigtreeSB',
-              fontSize: 16,
-            ),
+  /// The watch page's actions, the ones the controls also offer, so they
+  /// can be found without bringing the controls up.
+  List<WatchAction> get _watchActions {
+    final providers = widget.availableProviders ?? const <VideoProvider>[];
+    String? providerName;
+    for (final provider in providers) {
+      if (provider.codeName == _currentProviderCode) {
+        providerName = provider.displayName;
+      }
+    }
+    return <WatchAction>[
+      if (providers.isNotEmpty)
+        WatchAction(
+          icon: PhosphorIcons.hardDrives(),
+          label: providerName ?? tr('switch_provider'),
+          busy: _isSwitchingProvider,
+          onTap: _showProviderSwitcher,
+        ),
+      WatchAction(
+        icon: PhosphorIcons.closedCaptioning(),
+        label: tr('player_subtitles'),
+        onTap: _showSubtitleSwitcher,
+      ),
+      WatchAction(
+        icon: PhosphorIcons.downloadSimple(),
+        label: tr('download_action'),
+        onTap: () => unawaited(_downloadFromCurrentProvider()),
+      ),
+      WatchAction(
+        icon: PhosphorIcons.arrowSquareOut(),
+        label: tr('open_external'),
+        onTap: _showExternalPlayerSheet,
+      ),
+    ];
+  }
+
+  List<Widget> _movieWatchSlivers() {
+    final metadata = widget.movieMetadata;
+    final recommendations =
+        metadata?.recommendations ?? const <MovieRecommendation>[];
+    final meta = <String>[
+      if (metadata?.releaseYear != null) '${metadata!.releaseYear}',
+      ...?metadata?.genres.take(3),
+    ].join(' · ');
+    return <Widget>[
+      SliverToBoxAdapter(
+        child: WatchHeader(
+          title: metadata?.movieName ?? '',
+          meta: meta,
+          washImageUrl: tmdbImage(
+            metadata?.backdropPath ?? metadata?.posterPath,
+            'w300',
+          ),
+          actions: _watchActions,
+        ),
+      ),
+      if (recommendations.isNotEmpty) ...<Widget>[
+        SliverToBoxAdapter(
+          child: WatchSectionHeader(title: tr('more_like_this')),
+        ),
+        WatchPosterGrid(
+          itemCount: recommendations.length,
+          itemBuilder: (context, index) {
+            final movie = recommendations[index];
+            final facts = _movieFacts(movie);
+            return WatchPosterTile(
+              title: movie.title,
+              posterUrl: tmdbImage(movie.posterPath, 'w342'),
+              semanticLabel:
+                  facts.isEmpty ? movie.title : '${movie.title}, $facts',
+              onTap: () => unawaited(_previewRecommendation(movie)),
+            );
+          },
+        ),
+      ],
+    ];
+  }
+
+  /// A recommendation's backdrop and synopsis first, then Play: a poster
+  /// alone is too little to leave this movie for.
+  Future<void> _previewRecommendation(MovieRecommendation movie) async {
+    final play = await showWatchPreview(
+      context,
+      title: movie.title,
+      meta: _movieFacts(movie),
+      overview: movie.overview,
+      backdropUrl: tmdbImage(movie.backdropPath ?? movie.posterPath, 'w780'),
+    );
+    if (play == true && mounted) await _playTvMovie(movie);
+  }
+
+  List<Widget> _seriesWatchSlivers() {
+    final metadata = widget.tvMetadata;
+    // The season on screen, which the season button can change, and the one
+    // playing, which Up Next follows whatever is being browsed.
+    final episodes = metadata?.seasonEpisodes ?? _contentMenuEpisodes;
+    final playingSeason =
+        _contentMenuEpisodes.isNotEmpty ? _contentMenuEpisodes : episodes;
+    bool isPlaying(EpisodeMetadata episode) =>
+        episode.episodeNumber == metadata?.episodeNumber &&
+        episode.seasonNumber == metadata?.seasonNumber;
+    final playingIndex = playingSeason.indexWhere(isPlaying);
+    final playing = playingIndex < 0 ? null : playingSeason[playingIndex];
+    final candidate =
+        playingIndex < 0 || playingIndex + 1 >= playingSeason.length
+            ? null
+            : playingSeason[playingIndex + 1];
+    final upNext =
+        candidate == null || _hasNotAired(candidate) ? null : candidate;
+
+    final seasons = metadata?.allSeasons;
+    final browsedSeason = _portraitBrowsedSeasonNumber ??
+        episodes.firstOrNull?.seasonNumber ??
+        metadata?.seasonNumber;
+    String? seasonName;
+    for (final season in seasons ?? const <SeasonMetadata>[]) {
+      if (season.seasonNumber == browsedSeason) seasonName = season.seasonName;
+    }
+    final seasonLabel = seasonName ??
+        tr('season_number', namedArgs: {'number': '${browsedSeason ?? 1}'});
+    final canBrowseSeasons =
+        metadata?.tvId != null && (seasons == null || seasons.length > 1);
+
+    final airYear = DateTime.tryParse(
+      metadata?.airDate ?? playing?.airDate ?? '',
+    )?.year;
+    final meta = <String>[
+      if (playing?.runtime != null) '${playing!.runtime}m',
+      if (airYear != null) '$airYear',
+      ...?metadata?.genres.take(2),
+    ].join(' · ');
+
+    return <Widget>[
+      SliverToBoxAdapter(
+        child: WatchHeader(
+          kicker: WatchKicker(
+            'S${metadata?.seasonNumber ?? '-'} · E${metadata?.episodeNumber ?? '-'}',
+          ),
+          title: metadata?.seriesName ?? '',
+          subtitle: metadata?.episodeName ?? playing?.episodeName,
+          meta: meta,
+          synopsis: playing?.overview,
+          washImageUrl: tmdbImage(
+            metadata?.posterPath ?? metadata?.backdropPath,
+            'w300',
+          ),
+          actions: _watchActions,
+        ),
+      ),
+      if (upNext != null)
+        SliverToBoxAdapter(
+          child: WatchUpNextCard(
+            title: 'E${upNext.episodeNumber} · ${upNext.episodeName}',
+            meta: upNext.runtime == null ? null : '${upNext.runtime}m',
+            imageUrl: tmdbImage(upNext.stillPath, 'w300'),
+            onPlay: () => _playUpNext(upNext),
           ),
         ),
-        if (subtitle != null)
-          Text(
-            subtitle,
-            style: TextStyle(color: colors.muted, fontSize: 13),
+      if (episodes.isNotEmpty) ...<Widget>[
+        SliverToBoxAdapter(
+          child: WatchSectionHeader(
+            title: tr('episodes'),
+            trailing: canBrowseSeasons
+                ? WatchSeasonButton(
+                    label: seasonLabel,
+                    loading: _portraitSeasonLoading,
+                    onTap: _showPortraitSeasonPicker,
+                  )
+                : WatchCount(seasonLabel),
           ),
-        if (action != null) action,
+        ),
+        SliverList.builder(
+          itemCount: episodes.length,
+          itemBuilder: (context, index) {
+            final episode = episodes[index];
+            final current = isPlaying(episode);
+            final unaired = _hasNotAired(episode);
+            return WatchEpisodeTile(
+              key: ValueKey<String>(
+                '${episode.seasonNumber}-${episode.episodeNumber}',
+              ),
+              number: episode.episodeNumber,
+              title: episode.episodeName,
+              meta: _episodeFacts(episode, unaired: unaired),
+              synopsis: episode.overview,
+              stillUrl: tmdbImage(episode.stillPath, 'w300'),
+              current: current,
+              upNext: upNext != null &&
+                  episode.seasonNumber == upNext.seasonNumber &&
+                  episode.episodeNumber == upNext.episodeNumber,
+              unaired: unaired,
+              progress:
+                  current ? WatchLiveProgress(read: _contentProgress) : null,
+              onTap: () => _playTvEpisode(episode),
+            );
+          },
+        ),
       ],
-    );
+    ];
+  }
+
+  /// Up Next follows the season playing. If another season is on screen,
+  /// the next player gets the playing season's list back, so its own Up
+  /// Next and next-episode prompt follow on from here.
+  Future<void> _playUpNext(EpisodeMetadata episode) async {
+    final metadata = widget.tvMetadata;
+    if (metadata != null && _contentMenuEpisodes.isNotEmpty) {
+      metadata.seasonEpisodes = List<EpisodeMetadata>.of(_contentMenuEpisodes);
+    }
+    await _playTvEpisode(episode);
+  }
+
+  /// How far into the content playback is, or null during a pre-roll, whose
+  /// position isn't the content's.
+  double? _contentProgress() {
+    if (!mounted || _preRollActive || _awaitingContentAfterPreRoll) {
+      return null;
+    }
+    final value = _betterPlayerController.videoPlayerController?.value;
+    final duration = value?.duration;
+    if (value == null || duration == null || duration.inMilliseconds <= 0) {
+      return null;
+    }
+    return value.position.inMilliseconds / duration.inMilliseconds;
   }
 
   Future<void> _showPortraitSeasonPicker() async {
@@ -3153,7 +3379,10 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
           expand: false,
           builder: (context, scrollController) => PlayerSheetScaffold(
             title: tr('select_season'),
-            subtitle: '${seasons.length} ${tr('select_season')}',
+            subtitle: tr(
+              'seasons_count',
+              namedArgs: {'count': '${seasons.length}'},
+            ),
             actions: [
               PlayerSheetAction(
                 icon: PhosphorIcons.x(),
@@ -3193,8 +3422,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                                 Icon(PhosphorIcons.television()),
                           ),
                   ),
-                  onTap: () =>
-                      Navigator.pop(sheetContext, season.seasonNumber),
+                  onTap: () => Navigator.pop(sheetContext, season.seasonNumber),
                 );
               },
             ),
@@ -3230,16 +3458,34 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     }
   }
 
-  String? _portraitEpisodeSubtitle(EpisodeMetadata episode) {
-    final details = <String>[];
-    if (episode.runtime != null) details.add('${episode.runtime}m');
-    if (episode.voteAverage != null && episode.voteAverage! > 0) {
-      details.add('★ ${episode.voteAverage!.toStringAsFixed(1)}');
-    }
-    return details.isEmpty ? null : details.join('  •  ');
+  bool _hasNotAired(EpisodeMetadata episode) {
+    final airDate = DateTime.tryParse(episode.airDate ?? '');
+    return airDate != null && airDate.isAfter(DateTime.now());
   }
 
-  String? _portraitMovieSubtitle(MovieRecommendation movie) {
+  String? _episodeFacts(EpisodeMetadata episode, {required bool unaired}) {
+    final airDate = DateTime.tryParse(episode.airDate ?? '');
+    final locale = Localizations.localeOf(context).toString();
+    String? date;
+    if (airDate != null) {
+      try {
+        date = DateFormat.yMMMd(locale).format(airDate);
+      } catch (_) {
+        // A locale without date symbols loaded.
+        date = DateFormat.yMMMd().format(airDate);
+      }
+    }
+    if (unaired) {
+      return date == null ? null : tr('coming_date', namedArgs: {'date': date});
+    }
+    final details = <String>[
+      if (episode.runtime != null) '${episode.runtime}m',
+      if (date != null) date,
+    ];
+    return details.isEmpty ? null : details.join(' · ');
+  }
+
+  String _movieFacts(MovieRecommendation movie) {
     final details = <String>[];
     if (movie.releaseDate?.isNotEmpty == true) {
       details.add(movie.releaseDate!.split('-').first);
@@ -3247,7 +3493,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     if (movie.voteAverage != null && movie.voteAverage! > 0) {
       details.add('★ ${movie.voteAverage!.toStringAsFixed(1)}');
     }
-    return details.isEmpty ? null : details.join('  •  ');
+    return details.join(' · ');
   }
 
   /// The Next episode control. Fullscreen playback is its own route, so it
@@ -3259,18 +3505,24 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       await _playTvEpisode(next);
       return;
     }
-    await _handleContentSwitch();
-    if (!mounted) return;
-    final navigator = Navigator.of(context);
-    _closePlayer();
-    await navigator.pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => TVVideoLoader(
-          download: false,
-          metadata: _metadataForTvEpisode(next),
+    await _startContent(() async {
+      await _handleContentSwitch();
+      if (!mounted) return;
+      _hideContentSwitchLoading();
+      _hideNextEpisodeOverlay();
+      final navigator = Navigator.of(context);
+      _closePlayer();
+      await navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (context) => AdsterraPlaybackGate.buildLoader(context,
+              television: widget.useTvControls,
+              builder: (context) => TVVideoLoader(
+                    download: false,
+                    metadata: _metadataForTvEpisode(next),
+                  )),
         ),
-      ),
-    );
+      );
+    });
   }
 
   void _exitPlayer() {
@@ -3308,7 +3560,6 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
 
   Future<void> _downloadFromCurrentProvider() async {
     if (_activeSources.isEmpty) return;
-    await _startActiveProviderEnrichment();
     if (!mounted || _activeSources.isEmpty) return;
     final providerName = _currentProviderName();
     final sources = Map<String, String>.of(_activeSources);
@@ -3414,20 +3665,28 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       settings.analytics.trackDownload(
         action: 'enqueue_from_player',
         mediaType: _analyticsMediaType,
-        outcome: 'error',
+        outcome: isAlreadyDownloaded(error) ? 'already_downloaded' : 'error',
         provider: providerName,
         quality: resolution,
         error: error.toString(),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not start download: $error')),
+        SnackBar(
+          content: Text(
+            offlineEnqueueErrorMessage(
+              error,
+              title:
+                  isMovie ? movie?.movieName ?? 'This movie' : 'This episode',
+            ),
+          ),
+        ),
       );
     }
   }
 
   String _providerDisplayName(String? code) {
-    if (code == null || code.trim().isEmpty) return 'Current provider';
+    if (code == null || code.trim().isEmpty) return tr('tv_current_provider');
     final loadedName = _loadedProviders[code]?.providerName;
     if (loadedName?.isNotEmpty == true) return loadedName!;
     for (final provider
@@ -3517,178 +3776,55 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
   }
 
   void _showSubtitleTimingAdjuster() {
-    const initialSize = .52;
-    const minSize = .42;
-    const maxSize = .72;
-    final dragController = DraggableScrollableController();
-
-    void updateFromHeader(DragUpdateDetails details) {
-      if (!dragController.isAttached) return;
-      final viewportHeight = MediaQuery.sizeOf(context).height;
-      final nextSize = (dragController.size - details.delta.dy / viewportHeight)
-          .clamp(minSize, maxSize);
-      dragController.jumpTo(nextSize);
-    }
-
-    void settleFromHeader(DragEndDetails details) {
-      if (!dragController.isAttached) return;
-      final velocity = details.primaryVelocity ?? 0;
-      final current = dragController.size;
-      final target = velocity < -250
-          ? maxSize
-          : velocity > 250
-              ? minSize
-              : (current < (initialSize + minSize) / 2)
-                  ? minSize
-                  : (current > (initialSize + maxSize) / 2)
-                      ? maxSize
-                      : initialSize;
-      unawaited(
-        dragController.animateTo(
-          target,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-        ),
-      );
-    }
-
     showPlayerSheet<void>(
       context: context,
-      builder: (sheetContext) => DraggableScrollableSheet(
-        controller: dragController,
-        initialChildSize: initialSize,
-        minChildSize: minSize,
-        maxChildSize: maxSize,
-        expand: false,
-        snap: true,
-        builder: (context, scrollController) => PlayerSheetScaffold(
-          title: tr('subtitle_timing'),
-          subtitle: tr('subtitle_timing_help'),
-          showDragHandle: true,
-          onHeaderVerticalDragUpdate: updateFromHeader,
-          onHeaderVerticalDragEnd: settleFromHeader,
-          actions: [
-            IconButton(
-              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-              onPressed: () => Navigator.pop(sheetContext),
-              icon: Icon(PhosphorIcons.x()),
-            ),
-          ],
-          child: SingleChildScrollView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-            child: _SubtitleTimingControl(
-              controller: _betterPlayerController,
-            ),
-          ),
-        ),
+      builder: (sheetContext) => PlayerSubtitleTimingSheet(
+        controller: _betterPlayerController,
+        onClose: () => Navigator.pop(sheetContext),
       ),
-    ).whenComplete(dragController.dispose);
+    );
   }
 
-  String _sanitizeError(dynamic error) {
-    if (error == null) return tr('switch_provider_error');
-    String msg = error.toString();
-    final isDeveloperError = RegExp(
-      r'(PlatformException|IndexOutOfBoundsException|MethodChannel|SourceFile:|java\.|android\.|io\.flutter|\n\s*at\s)',
-      caseSensitive: false,
-    ).hasMatch(msg);
-    if (isDeveloperError) return tr('switch_provider_error');
-
-    msg = msg.replaceAll(RegExp(r'https?://[^\s]+'), '').trim();
-    msg = msg
-        .replaceAll(
-          RegExp(
-              r'^(Exception|SocketException|FormatException|ScraperApiException):\s*'),
-          '',
-        )
-        .trim();
-    // Player surfaces are intentionally compact. Multi-line or very long
-    // errors are diagnostics, not useful recovery guidance for the viewer.
-    if (msg.isEmpty || msg.contains('\n') || msg.length > 160) {
-      return tr('switch_provider_error');
-    }
-    return msg;
-  }
-
-  Widget _buildCustomPlayerErrorWidget(
-      BuildContext context, String? errorText) {
-    final cleanError = _sanitizeError(errorText);
-    final hasProviders = widget.availableProviders != null &&
-        widget.availableProviders!.isNotEmpty;
-    return PlayerTheme(
-      onVideo: true,
-      child: ColoredBox(
-        color: Colors.black,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Center(
-            // A 16:9 playback area is short; scrolling keeps the message and
-            // its actions reachable instead of overflowing the Column.
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const BetterPlayerIconSurface(
-                    icon: PhosphorIconsRegular.warningCircle,
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    cleanError,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontFamily: 'FigtreeSB',
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      if (hasProviders)
-                        FilledButton.icon(
-                          onPressed: () {
-                            if (widget.useTvControls) {
-                              _showTvProviderMenu();
-                            } else {
-                              _showProviderSwitcher();
-                            }
-                          },
-                          icon:
-                              Icon(PhosphorIcons.arrowsLeftRight(), size: 18),
-                          label: Text(tr('switch_provider')),
-                        ),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          final currentSource = _currentProviderCode;
-                          if (currentSource != null) {
-                            _switchToProvider(
-                              currentSource,
-                              closeMenu: () {},
-                              refreshMenu: () {},
-                            );
-                          }
-                        },
-                        icon: Icon(PhosphorIcons.arrowClockwise(), size: 18),
-                        label: Text(tr('retry')),
-                      ),
-                      IconButton(
-                        onPressed: _exitPlayer,
-                        icon: Icon(PhosphorIcons.x()),
-                        tooltip: tr('close'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+  Widget _buildCustomPlayerErrorWidget(BuildContext context) {
+    final hasProviders = widget.availableProviders?.isNotEmpty == true;
+    return PlayerErrorView(
+      title: tr('player_playback_failed'),
+      message: tr(hasProviders
+          ? 'player_playback_failed_hint'
+          : 'player_playback_retry_hint'),
+      icon: PhosphorIcons.warningCircle(),
+      onClose: _exitPlayer,
+      closeLabel: tr('close'),
+      actions: [
+        if (hasProviders)
+          PlayerActionButton(
+            label: tr('switch_provider'),
+            icon: PhosphorIcons.hardDrives(),
+            primary: true,
+            autofocus: widget.useTvControls,
+            onPressed: widget.useTvControls
+                ? _showTvProviderMenu
+                : _showProviderSwitcher,
           ),
+        PlayerActionButton(
+          label: tr('retry'),
+          icon: PhosphorIcons.arrowClockwise(),
+          primary: !hasProviders,
+          autofocus: widget.useTvControls && !hasProviders,
+          onPressed: () {
+            final currentSource = _currentProviderCode;
+            if (currentSource != null) {
+              unawaited(_switchToProvider(
+                currentSource,
+                closeMenu: () {},
+                refreshMenu: () {},
+              ));
+            } else {
+              _betterPlayerController.retryDataSource();
+            }
+          },
         ),
-      ),
+      ],
     );
   }
 }
@@ -3710,12 +3846,14 @@ class _TvNextEpisodeOverlay extends StatelessWidget {
     required this.onCancel,
     required this.onPlay,
     required this.cancelLabel,
+    this.busy = false,
     this.countdown,
     this.countdownTotal = 10,
     this.touch = false,
     this.liftedBy = 0,
   });
 
+  final bool busy;
   final bool touch;
   final double liftedBy;
 
@@ -3724,7 +3862,7 @@ class _TvNextEpisodeOverlay extends StatelessWidget {
   final int countdownTotal;
   final String cancelLabel;
   final VoidCallback onCancel;
-  final VoidCallback onPlay;
+  final FutureOr<void> Function() onPlay;
 
   @override
   Widget build(BuildContext context) {
@@ -3744,149 +3882,159 @@ class _TvNextEpisodeOverlay extends StatelessWidget {
     final placeholder = tv == null
         ? const Color(0xff1b1c1c)
         : Color.alphaBlend(tv.idleFill, shade.withValues(alpha: 1));
-    return Focus(
-      onKeyEvent: (_, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.escape ||
-                event.logicalKey == LogicalKeyboardKey.goBack ||
-                event.logicalKey == LogicalKeyboardKey.browserBack)) {
-          onCancel();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-        // Only the corner the card sits in is shaded, and the shade takes no
-        // taps: the picture and its controls stay usable around the card.
-        IgnorePointer(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: AlignmentDirectional.bottomEnd,
-                radius: 1.1,
-                colors: [shade, shade.withValues(alpha: 0)],
+    return PlayerTheme(
+      onVideo: touch,
+      child: Focus(
+        onKeyEvent: (_, event) {
+          if (event is KeyDownEvent &&
+              (event.logicalKey == LogicalKeyboardKey.escape ||
+                  event.logicalKey == LogicalKeyboardKey.goBack ||
+                  event.logicalKey == LogicalKeyboardKey.browserBack)) {
+            onCancel();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Only the corner the card sits in is shaded, and the shade takes no
+            // taps: the picture and its controls stay usable around the card.
+            IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: AlignmentDirectional.bottomEnd,
+                    radius: 1.1,
+                    colors: [shade, shade.withValues(alpha: 0)],
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        AnimatedPadding(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: EdgeInsets.only(bottom: liftedBy),
-          child: SafeArea(
-          minimum: touch
-              ? const EdgeInsets.fromLTRB(20, 16, 20, 20)
-              : const EdgeInsets.fromLTRB(48, 30, 48, 36),
-          child: Align(
-            alignment: AlignmentDirectional.bottomEnd,
-            child: SizedBox(
-              width: touch ? 380 : 440,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(5),
-                        child: SizedBox(
-                          width: touch ? 128 : 160,
-                          height: touch ? 72 : 90,
-                          child: episode.stillPath == null
-                              ? ColoredBox(
-                                  color: placeholder,
-                                  child: Icon(
-                                    PhosphorIconsRegular.filmStrip,
-                                    color: tv?.disabled ?? Colors.white54,
-                                    size: 30,
-                                  ),
-                                )
-                              : Image.network(
-                                  'https://jiofix.aadilsamjeed.workers.dev/im/w300${episode.stillPath}',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      ColoredBox(color: placeholder),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
+            AnimatedPadding(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.only(bottom: liftedBy),
+              child: SafeArea(
+                minimum: touch
+                    ? const EdgeInsets.fromLTRB(20, 16, 20, 20)
+                    : const EdgeInsets.fromLTRB(48, 30, 48, 36),
+                child: Align(
+                  alignment: AlignmentDirectional.bottomEnd,
+                  child: SizedBox(
+                    width: touch ? 380 : 440,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              tr('next_episode').toUpperCase(),
-                              style: TextStyle(
-                                color: muted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.4,
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(5),
+                              child: SizedBox(
+                                width: touch ? 128 : 160,
+                                height: touch ? 72 : 90,
+                                child: episode.stillPath == null
+                                    ? ColoredBox(
+                                        color: placeholder,
+                                        child: Icon(
+                                          PhosphorIconsRegular.filmStrip,
+                                          color: tv?.disabled ?? Colors.white54,
+                                          size: 30,
+                                        ),
+                                      )
+                                    : Image.network(
+                                        'https://jiofix.aadilsamjeed.workers.dev/im/w300${episode.stillPath}',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            ColoredBox(color: placeholder),
+                                      ),
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'S${episode.seasonNumber}:E${episode.episodeNumber}  '
-                              '${episode.episodeName}',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: foreground,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                height: 1.2,
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tr('next_episode').toUpperCase(),
+                                    style: TextStyle(
+                                      color: muted,
+                                      fontSize: 12,
+                                      fontFamily: AppType.semiBold,
+                                      letterSpacing: 1.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'S${episode.seasonNumber}:E${episode.episodeNumber}  '
+                                    '${episode.episodeName}',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: foreground,
+                                      fontSize: 18,
+                                      fontFamily: AppType.semiBold,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                  if (episode.overview?.trim().isNotEmpty ==
+                                      true) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      episode.overview!.trim(),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: muted,
+                                        fontSize: 13,
+                                        fontFamily: AppType.regular,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
-                            if (episode.overview?.trim().isNotEmpty ==
-                                true) ...[
-                              const SizedBox(height: 6),
-                              Text(
-                                episode.overview!.trim(),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: muted,
-                                  fontSize: 13,
-                                  height: 1.3,
-                                ),
-                              ),
-                            ],
                           ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: _TvPromptButton(
+                                label: seconds == null
+                                    ? tr('next_episode')
+                                    : '${tr('next_episode')}  $seconds',
+                                icon:
+                                    PhosphorIcons.play(PhosphorIconsStyle.fill),
+                                progress: elapsed,
+                                autofocus: !touch,
+                                colors: tv,
+                                busy: busy,
+                                onPressed: onPlay,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: _TvPromptButton(
+                                label: cancelLabel,
+                                icon: PhosphorIcons.x(),
+                                colors: tv,
+                                onPressed: onCancel,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      _TvPromptButton(
-                        label: seconds == null
-                            ? tr('next_episode')
-                            : '${tr('next_episode')}  $seconds',
-                        icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
-                        progress: elapsed,
-                        autofocus: !touch,
-                        colors: tv,
-                        onPressed: onPlay,
-                      ),
-                      const SizedBox(width: 10),
-                      _TvPromptButton(
-                        label: cancelLabel,
-                        icon: PhosphorIcons.x(),
-                        colors: tv,
-                        onPressed: onCancel,
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
-        ),
-        ],
       ),
     );
   }
@@ -3900,6 +4048,7 @@ class _TvPromptButton extends StatefulWidget {
     required this.label,
     required this.icon,
     required this.onPressed,
+    this.busy = false,
     this.progress,
     this.autofocus = false,
     this.colors,
@@ -3907,7 +4056,8 @@ class _TvPromptButton extends StatefulWidget {
 
   final String label;
   final IconData icon;
-  final VoidCallback onPressed;
+  final FutureOr<void> Function() onPressed;
+  final bool busy;
   final double? progress;
   final bool autofocus;
   final BetterPlayerTvPanelColors? colors;
@@ -3925,7 +4075,13 @@ class _TvPromptButtonState extends State<_TvPromptButton> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PlaybackAction(
+        onStart: widget.onPressed,
+        builder: (context, busy, start) =>
+            _buildButton(context, busy || widget.busy, start),
+      );
+
+  Widget _buildButton(BuildContext context, bool busy, VoidCallback start) {
     // Focus on a remote, a finger on a phone: either lights it white.
     final lit = _focused || _pressed;
     final colors = widget.colors;
@@ -3944,23 +4100,23 @@ class _TvPromptButtonState extends State<_TvPromptButton> {
       actions: {
         ActivateIntent: CallbackAction<ActivateIntent>(
           onInvoke: (_) {
-            widget.onPressed();
+            if (!busy) start();
             return null;
           },
         ),
       },
       child: GestureDetector(
-        onTap: widget.onPressed,
+        onTap: busy ? null : start,
         onTapDown: (_) => _press(true),
         onTapUp: (_) => _press(false),
         onTapCancel: () => _press(false),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(AppRadii.button),
           child: Stack(
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 120),
-                height: 44,
+                height: 48,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 color: colors == null
                     ? (lit ? const Color(0xf2ffffff) : const Color(0x40ffffff))
@@ -3968,15 +4124,26 @@ class _TvPromptButtonState extends State<_TvPromptButton> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(widget.icon, color: foreground, size: 20),
+                    if (busy)
+                      SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: foreground),
+                      )
+                    else
+                      Icon(widget.icon, color: foreground, size: 20),
                     const SizedBox(width: 8),
-                    Text(
-                      widget.label,
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                    Flexible(
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: foreground,
+                          fontSize: 15,
+                          fontFamily: AppType.semiBold,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
                     ),
                   ],
@@ -4008,8 +4175,7 @@ class _TvPromptButtonState extends State<_TvPromptButton> {
   }
 }
 
-/// IntroDB's skip action: a white-edged pill over the picture that fills
-/// white under focus or a finger.
+/// IntroDB's intro, recap, credits and preview share one playback action.
 class _TvSkipButton extends StatelessWidget {
   const _TvSkipButton({required this.label, required this.onPressed});
 
@@ -4017,41 +4183,11 @@ class _TvSkipButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(PhosphorIcons.skipForward(PhosphorIconsStyle.fill), size: 18),
-      label: Text(label),
-      style: ButtonStyle(
-        minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 18),
-        ),
-        textStyle: const WidgetStatePropertyAll(
-          TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-        ),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        ),
-        side: const WidgetStatePropertyAll(
-          BorderSide(color: Colors.white, width: 1.5),
-        ),
-        backgroundColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.focused) ||
-                  states.contains(WidgetState.pressed)
-              ? const Color(0xf2ffffff)
-              : const Color(0x99000000),
-        ),
-        foregroundColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.focused) ||
-                  states.contains(WidgetState.pressed)
-              ? Colors.black
-              : Colors.white,
-        ),
-        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => PlayerActionButton(
+        label: label,
+        icon: PhosphorIcons.skipForward(PhosphorIconsStyle.fill),
+        onPressed: onPressed,
+      );
 }
 
 /// Audio and subtitles in one panel, as Netflix has it: soundtracks beside
@@ -4185,8 +4321,7 @@ class _SubtitleSwitcherSheetState extends State<_SubtitleSwitcherSheet> {
         BetterPlayerSelectionTile(
           title: _audioTrackTitle(track, index),
           subtitle: _audioTrackSubtitle(track),
-          selected:
-              selected == track || (selected == null && track.isDefault),
+          selected: selected == track || (selected == null && track.isDefault),
           onTap: () {
             widget.controller.setAudioTrack(track);
             widget.onClose();
@@ -4226,7 +4361,9 @@ class _SubtitleSwitcherSheetState extends State<_SubtitleSwitcherSheet> {
   Widget build(BuildContext context) {
     final audio = _audioRows();
     final withAudio = audio.length > 1;
-    final subtitles = [for (final option in widget.options) _subtitleRow(option)];
+    final subtitles = [
+      for (final option in widget.options) _subtitleRow(option)
+    ];
     return DraggableScrollableSheet(
       initialChildSize: .82,
       minChildSize: .5,
@@ -4234,7 +4371,8 @@ class _SubtitleSwitcherSheetState extends State<_SubtitleSwitcherSheet> {
       expand: false,
       snap: true,
       builder: (context, scrollController) => PlayerSheetScaffold(
-        title: withAudio ? tr('player_audio_subtitles') : tr('player_subtitles'),
+        title:
+            withAudio ? tr('player_audio_subtitles') : tr('player_subtitles'),
         subtitle: tr('choose_subtitle_language'),
         actions: [
           PlayerSheetAction(
@@ -4347,192 +4485,6 @@ class _SubtitleTools extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SubtitleTimingControl extends StatefulWidget {
-  const _SubtitleTimingControl({required this.controller});
-
-  final BetterPlayerController controller;
-
-  @override
-  State<_SubtitleTimingControl> createState() => _SubtitleTimingControlState();
-}
-
-class _SubtitleTimingControlState extends State<_SubtitleTimingControl> {
-  static const _step = Duration(milliseconds: 500);
-  static const _minimum = Duration(seconds: -10);
-  static const _limit = Duration(seconds: 10);
-
-  late Duration _offset;
-
-  @override
-  void initState() {
-    super.initState();
-    _offset = widget.controller.subtitleOffset;
-  }
-
-  @override
-  void didUpdateWidget(_SubtitleTimingControl oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.controller, widget.controller)) {
-      _offset = widget.controller.subtitleOffset;
-    }
-  }
-
-  void _setOffset(Duration offset) {
-    final milliseconds = offset.inMilliseconds.clamp(
-      -_limit.inMilliseconds,
-      _limit.inMilliseconds,
-    );
-    widget.controller.setSubtitleOffset(Duration(milliseconds: milliseconds));
-    setState(() => _offset = widget.controller.subtitleOffset);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = BetterPlayerPanelColors.of(context);
-    final offset = _offset;
-    final isSynced = offset == Duration.zero;
-    final status = isSynced
-        ? tr('subtitle_timing_synced')
-        : tr(offset.isNegative ? 'subtitle_earlier' : 'subtitle_later');
-    Widget step(Key key, IconData icon, String tooltip, VoidCallback? onTap) =>
-        IconButton.filledTonal(
-          key: key,
-          tooltip: tooltip,
-          onPressed: onTap,
-          style: IconButton.styleFrom(
-            backgroundColor: colors.raised,
-            foregroundColor: colors.foreground,
-            disabledBackgroundColor: colors.selectedFill,
-            disabledForegroundColor: colors.muted.withValues(alpha: .5),
-            fixedSize: const Size(48, 48),
-          ),
-          icon: Icon(icon, size: 20),
-        );
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // The offset, large, with what it means under it.
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 160),
-          child: Text(
-            _subtitleOffsetValue(offset),
-            key: ValueKey(offset.inMilliseconds),
-            style: TextStyle(
-              color: colors.foreground,
-              fontFamily: 'FigtreeBold',
-              fontSize: 40,
-              height: 1.1,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          status,
-          key: const Key('subtitle_timing_value'),
-          style: TextStyle(color: colors.muted, fontSize: 14),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            step(
-              const Key('subtitle_timing_earlier'),
-              PhosphorIcons.minus(),
-              '${tr('subtitle_earlier')} 0.5s',
-              offset <= _minimum ? null : () => _setOffset(offset - _step),
-            ),
-            Expanded(
-              child: Slider(
-                key: const Key('subtitle_timing_slider'),
-                value: offset.inMilliseconds
-                    .clamp(-_limit.inMilliseconds, _limit.inMilliseconds)
-                    .toDouble(),
-                min: -_limit.inMilliseconds.toDouble(),
-                max: _limit.inMilliseconds.toDouble(),
-                divisions: 80,
-                semanticFormatterCallback: (_) => _subtitleOffsetLabel(offset),
-                onChanged: (value) =>
-                    _setOffset(Duration(milliseconds: value.round())),
-              ),
-            ),
-            step(
-              const Key('subtitle_timing_later'),
-              PhosphorIcons.plus(),
-              '${tr('subtitle_later')} 0.5s',
-              offset >= _limit ? null : () => _setOffset(offset + _step),
-            ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 60),
-          child: DefaultTextStyle(
-            style: TextStyle(color: colors.muted, fontSize: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [Text('−10s'), Text('0s'), Text('+10s')],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        TextButton.icon(
-          key: const Key('subtitle_timing_reset'),
-          onPressed: isSynced ? null : () => _setOffset(Duration.zero),
-          icon: Icon(PhosphorIcons.arrowCounterClockwise(), size: 18),
-          label: Text(tr('subtitle_timing_reset')),
-        ),
-      ],
-    );
-  }
-}
-
-String _subtitleOffsetValue(Duration offset) {
-  if (offset == Duration.zero) return '0.0s';
-  final seconds = offset.inMilliseconds / 1000;
-  final sign = seconds > 0 ? '+' : '−';
-  return '$sign${seconds.abs().toStringAsFixed(1)}s';
-}
-
-String _subtitleOffsetLabel(Duration offset) {
-  if (offset == Duration.zero) return tr('subtitle_timing_synced');
-  final seconds = (offset.inMilliseconds.abs() / 1000).toStringAsFixed(2);
-  final compactSeconds = seconds.replaceFirst(RegExp(r'\.?0+$'), '');
-  return tr(
-    offset.isNegative ? 'subtitle_offset_earlier' : 'subtitle_offset_later',
-    namedArgs: {'offset': compactSeconds},
-  );
-}
-
-class _PortraitMediaThumbnail extends StatelessWidget {
-  const _PortraitMediaThumbnail({
-    required this.path,
-    required this.width,
-    required this.height,
-    required this.fallbackIcon,
-  });
-
-  final String? path;
-  final double width;
-  final double height;
-  final IconData fallbackIcon;
-
-  @override
-  Widget build(BuildContext context) {
-    return PlayerThumbnail(
-      width: width,
-      height: height,
-      child: path == null
-          ? Icon(fallbackIcon)
-          : CachedNetworkImage(
-              cacheManager: cacheProp(),
-              imageUrl: 'https://jiofix.aadilsamjeed.workers.dev/im/w300$path',
-              fit: BoxFit.cover,
-              placeholder: (_, __) => const AppCachedImagePlaceholder(),
-              errorWidget: (_, __, ___) => Icon(fallbackIcon),
-            ),
     );
   }
 }
