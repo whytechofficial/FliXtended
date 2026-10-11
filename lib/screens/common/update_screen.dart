@@ -4,7 +4,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_download_manager/flutter_download_manager.dart';
-import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -19,6 +18,7 @@ import '../../mobile/widgets/pill_button.dart';
 import '../../mobile/widgets/settings_kit.dart' show SheetTitle;
 import '../../tv/app/tv_design.dart' show TvDesign, TvPalette;
 import '../../tv/focus/tv_keymap.dart';
+import 'update_download_manager.dart';
 import '../../tv/widgets/tv_dialog.dart';
 import '../../tv/widgets/tv_loading_skeletons.dart';
 import '../../tv/widgets/tv_update_widgets.dart';
@@ -39,7 +39,7 @@ class UpdateScreen extends StatefulWidget {
 }
 
 class _UpdateScreenState extends State<UpdateScreen> {
-  final DownloadManager _downloadManager = DownloadManager();
+  final UpdateDownloadManager _downloadManager = UpdateDownloadManager();
   PackageInfo? _packageInfo;
   String _savedDir = '';
   Object? _error;
@@ -357,50 +357,22 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
   Future<void> _toggleDownload(String url) async {
     try {
-      // Resolve redirects (e.g. GitHub release URLs 302 to a CDN) before
-      // handing the URL to the download manager, which doesn't follow
-      // redirects reliably and leaves the task stuck at 0%.
-      final resolvedUrl = await _resolveFinalUrl(url);
-      final task = _downloadManager.getDownload(resolvedUrl);
+      final task = _downloadManager.getDownload(url);
       if (task == null || task.status.value.isCompleted) {
         await _downloadManager.addDownload(
-          resolvedUrl,
-          '$_savedDir/${_downloadManager.getFileNameFromUrl(resolvedUrl)}',
+          url,
+          '$_savedDir/${UpdateDownloadManager.getFileNameFromUrl(url)}',
         );
       } else if (task.status.value == DownloadStatus.downloading ||
           task.status.value == DownloadStatus.queued) {
-        await _downloadManager.pauseDownload(resolvedUrl);
+        await _downloadManager.pauseDownload(url);
       } else if (task.status.value == DownloadStatus.paused) {
-        await _downloadManager.resumeDownload(resolvedUrl);
+        await _downloadManager.resumeDownload(url);
       }
       if (mounted) setState(() {});
     } catch (error) {
       if (mounted) _showDownloadError(error.toString());
     }
-  }
-
-  /// Follows HTTP redirects and returns the final URL. Returns the original
-  /// URL if resolution fails.
-  Future<String> _resolveFinalUrl(String url) async {
-    try {
-      final client = http.Client();
-      try {
-        final request = http.Request('HEAD', Uri.parse(url));
-        request.followRedirects = true;
-        request.maxRedirects = 5;
-        final streamed = await client.send(request).timeout(
-              const Duration(seconds: 15),
-            );
-        await streamed.stream.drain();
-        final finalUrl = streamed.request?.url.toString();
-        if (finalUrl != null && finalUrl.isNotEmpty) return finalUrl;
-      } finally {
-        client.close();
-      }
-    } catch (_) {
-      // Fall through to the original URL.
-    }
-    return url;
   }
 
   void _showDownloadError(String message) {
@@ -420,7 +392,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
   }
 
   Future<void> _openDownload(String url) async {
-    final file = File('$_savedDir/${_downloadManager.getFileNameFromUrl(url)}');
+    final file = File('$_savedDir/${UpdateDownloadManager.getFileNameFromUrl(url)}');
     try {
       if (!await file.exists()) {
         throw FileSystemException(tr(
@@ -440,7 +412,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
   Future<void> _deleteDownload(String url) async {
     try {
       final file =
-          File('$_savedDir/${_downloadManager.getFileNameFromUrl(url)}');
+          File('$_savedDir/${UpdateDownloadManager.getFileNameFromUrl(url)}');
       if (await file.exists()) await file.delete();
       await _downloadManager.removeDownload(url);
       if (mounted) setState(() {});
