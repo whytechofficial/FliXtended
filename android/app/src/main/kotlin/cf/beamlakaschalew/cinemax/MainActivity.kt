@@ -15,7 +15,6 @@ import dev.beamlak.flixquest_v2.downloads.StreamDownloadsBridge
 import dev.beamlak.flixquest_v2.downloads.StreamOfflinePlayerFactory
 import dev.beamlak.flixquest_v2.links.MediaLinkBridge
 import dev.beamlak.flixquest_v2.ads.PlaybackAdInputBridge
-import io.flutter.plugins.webviewflutter.WebViewFlutterPlugin
 
 class MainActivity: FlutterActivity() {
     private var downloadsBridge: StreamDownloadsBridge? = null
@@ -29,13 +28,10 @@ class MainActivity: FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        // Ads are disabled in this build: no WebView plugin, so no ad WebView to find.
         playbackAdInputBridge = PlaybackAdInputBridge(
             flutterEngine.dartExecutor.binaryMessenger,
-        ) { identifier ->
-            val plugin = flutterEngine.plugins.get(WebViewFlutterPlugin::class.java)
-                as? WebViewFlutterPlugin
-            plugin?.instanceManager?.getInstance<WebView>(identifier)
-        }
+        ) { _ -> null }
 
         val bridge = StreamDownloadsBridge(
             this,
