@@ -143,7 +143,9 @@ class _FlixQuestState extends State<FlixQuest>
     try {
       // Hot reload preserves initState and the provider's old catalog. Fetch
       // and apply the current remote values without repeating permissions.
-      await AppRemoteConfig.configure(_remoteConfig);
+      final rc = _remoteConfig;
+      if (rc == null) return;
+      await AppRemoteConfig.configure(rc);
       await _fetchConfig(requestPermissions: false);
     } catch (error) {
       if (kDebugMode) {
