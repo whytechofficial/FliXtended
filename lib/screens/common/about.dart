@@ -103,7 +103,7 @@ class AboutPage extends StatelessWidget {
                       color: palette.mutedText,
                     ),
                     onTap: () => _open(
-                      'https://github.com/whytechofficial/FlixQuest-India/issues/new/choose',
+                      'https://github.com/whytechofficial/FliXtended/issues/new/choose',
                     ),
                   ),
                 ],
@@ -125,7 +125,7 @@ class AboutPage extends StatelessWidget {
                   _LinkRow(
                     icon: PhosphorIcons.githubLogo(),
                     label: 'GitHub',
-                    uri: 'https://github.com/whytechofficial/FlixQuest-India',
+                    uri: 'https://github.com/whytechofficial/FliXtended',
                   ),
                   _LinkRow(
                     icon: PhosphorIcons.envelopeSimple(),
