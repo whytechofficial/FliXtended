@@ -44,14 +44,24 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
   bool get _forced {
     final config = context.read<AppDependencyProvider>();
-    return widget.isForced ||
-        (config.isForcedUpdate &&
-            _packageInfo != null &&
-            AppUpdateService.isAvailable(
-                packageInfo: _packageInfo!,
-                remoteVersion: config.latestAppVersion,
-                latestBuildNumber: config.latestBuildNumber,
-                minimumBuildNumber: config.minimumBuildNumber));
+    if (widget.isForced) return true;
+    if (_packageInfo == null) return false;
+    final available = AppUpdateService.isAvailable(
+        packageInfo: _packageInfo!,
+        remoteVersion: config.latestAppVersion,
+        latestBuildNumber: config.latestBuildNumber,
+        minimumBuildNumber: config.minimumBuildNumber);
+    if (!available) return false;
+    // Builds below the remotely configured minimum are always forced,
+    // even when the update is optional for everyone else.
+    final currentBuild = int.tryParse(_packageInfo!.buildNumber) ?? 0;
+    if (AppUpdateService.isForceRequired(
+      currentBuild: currentBuild,
+      minimumBuildNumber: config.minimumBuildNumber,
+    )) {
+      return true;
+    }
+    return config.isForcedUpdate;
   }
 
   @override
@@ -586,11 +596,36 @@ List<String> changelogItems(String changeLog) => changeLog
     .toList(growable: false);
 
 void showChangelogDialog(BuildContext context, String changeLog) {
+  final items = changelogItems(changeLog);
   showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(tr('changelogs')),
-      content: SingleChildScrollView(child: Text(changeLog)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final item in items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '•  ',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Expanded(child: Text(item)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
       actions: [
         FilledButton(
           onPressed: () => Navigator.pop(context),

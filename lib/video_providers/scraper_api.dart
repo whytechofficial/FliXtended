@@ -214,6 +214,31 @@ class ScraperApi {
     Map<String, String> queryParameters,
   ) async {
     try {
+      final result = await _attemptLoad(path, queryParameters);
+      // Beamlak's server disabled full stream collection ("Full stream
+      // collection is disabled"). Downloads request full=true, so fall back
+      // to the first working server instead of failing every scraper
+      // provider. The client must stay open across both attempts, so it is
+      // closed here — not inside _attemptLoad.
+      if (!result.success &&
+          queryParameters['full'] == 'true' &&
+          (result.errorMessage ?? '')
+              .contains('Full stream collection is disabled')) {
+        final fallbackParams = Map<String, String>.from(queryParameters)
+          ..remove('full');
+        return await _attemptLoad(path, fallbackParams);
+      }
+      return result;
+    } finally {
+      if (_ownsClient) _client.close();
+    }
+  }
+
+  Future<ProviderLoadResult> _attemptLoad(
+    String path,
+    Map<String, String> queryParameters,
+  ) async {
+    try {
       final uri = _endpoint(path, queryParameters);
       _logRequest(uri);
       final response = await _get(uri, timeout: const Duration(minutes: 1));
@@ -278,6 +303,25 @@ class ScraperApi {
           errorMessage: _messageFrom(body, response.statusCode),
         );
       }
+
+      // Pre-download subtitle contents (same approach as NetMirror): scraper
+      // subtitle URLs are frequently dead or blocked by the time the player
+      // requests them, so fetch the text now while the provider load is open.
+      // Subtitles that fail to download keep their URL for the player to try.
+      if (subtitles.isNotEmpty) {
+        final downloads = <Future<void>>[];
+        for (final subtitle in subtitles) {
+          final url = subtitle.url;
+          if (url == null || url.isEmpty) continue;
+          downloads.add(
+            _downloadSubtitleContent(url, subtitle.headers).then((content) {
+              if (content != null) subtitle.content = content;
+            }),
+          );
+        }
+        await Future.wait(downloads);
+      }
+
       return ProviderLoadResult(
         success: true,
         videoLinks: links,
@@ -288,8 +332,6 @@ class ScraperApi {
           errorMessage: 'Scraper request timed out');
     } catch (error) {
       return ProviderLoadResult(errorMessage: error.toString());
-    } finally {
-      if (_ownsClient) _client.close();
     }
   }
 
@@ -312,6 +354,32 @@ class ScraperApi {
           body: jsonEncode(body),
         )
         .timeout(timeout);
+  }
+
+  /// Downloads a subtitle file's text so the player can use it directly
+  /// instead of fetching the (often dead or rate-limited) subtitle URL later.
+  /// Returns the file content, or null when the fetch fails or the response
+  /// is not actually a subtitle file.
+  Future<String?> _downloadSubtitleContent(
+    String url,
+    Map<String, String>? headers,
+  ) async {
+    try {
+      final response = await _client
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200 || response.body.isEmpty) return null;
+      final head = response.body.length > 200
+          ? response.body.substring(0, 200)
+          : response.body;
+      final trimmed = head.trimLeft().toLowerCase();
+      if (trimmed.startsWith('<html') || trimmed.startsWith('<!doctype')) {
+        return null;
+      }
+      return response.body;
+    } catch (_) {
+      return null;
+    }
   }
 
   void _logRequest(Uri uri, {String method = 'GET'}) {

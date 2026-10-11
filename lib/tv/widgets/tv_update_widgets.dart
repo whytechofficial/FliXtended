@@ -188,6 +188,15 @@ class TvUpdateLayout extends StatelessWidget {
 }
 
 /// Release notes are a document, with remote scrolling independent of buttons.
+/// Splits the remote changelog into one bullet item per line, stripping any
+/// list markers the remote string already carries.
+List<String> _changelogItems(String changeLog) => changeLog
+    .split('\n')
+    .map((line) =>
+        line.trim().replaceFirst(RegExp(r'^(?:#+|[-*•·]|\d+[.)])\s+'), ''))
+    .where((line) => line.isNotEmpty)
+    .toList(growable: false);
+
 class TvChangelogView extends StatefulWidget {
   const TvChangelogView({required this.changeLog, super.key});
   final String changeLog;
@@ -290,11 +299,40 @@ class _TvChangelogViewState extends State<TvChangelogView> {
                                 controller: _scroll,
                                 padding: const EdgeInsets.only(
                                     right: 24, bottom: 16),
-                                child: Text(widget.changeLog,
-                                    style: TextStyle(
-                                        color: palette.foreground,
-                                        fontSize: 21,
-                                        height: 1.6)),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    for (final item in _changelogItems(
+                                        widget.changeLog))
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            bottom: 14),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text('•  ',
+                                                style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
+                                                    fontSize: 21,
+                                                    fontWeight:
+                                                        FontWeight.bold)),
+                                            Expanded(
+                                              child: Text(item,
+                                                  style: TextStyle(
+                                                      color: palette
+                                                          .foreground,
+                                                      fontSize: 21,
+                                                      height: 1.6)),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ))),
                       const SizedBox(height: 16),
                       TvUpdateAction(
