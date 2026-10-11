@@ -596,11 +596,36 @@ List<String> changelogItems(String changeLog) => changeLog
     .toList(growable: false);
 
 void showChangelogDialog(BuildContext context, String changeLog) {
+  final items = changelogItems(changeLog);
   showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(tr('changelogs')),
-      content: SingleChildScrollView(child: Text(changeLog)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final item in items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '•  ',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Expanded(child: Text(item)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
       actions: [
         FilledButton(
           onPressed: () => Navigator.pop(context),
