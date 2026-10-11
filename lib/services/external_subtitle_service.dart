@@ -6,20 +6,35 @@ import 'package:retry/retry.dart';
 import '../functions/function.dart';
 import '../models/external_subtitles.dart';
 import '../video_providers/scraper_api.dart';
+import 'opensubtitles_service.dart';
 
 /// Fetches external subtitles through the FlixQuest Scraper API.
 ///
 /// Search and file download both go through the scraper: it holds the provider
 /// credentials, normalizes every file to UTF-8 and strips aggregator ads, so
 /// the app never talks to a subtitle source directly.
+///
+/// When the scraper API fails or returns nothing (its subtitle upstream is
+/// currently down), the search transparently falls back to the key-free
+/// OpenSubtitles REST API, keeping the rest of the flow identical.
 class ExternalSubtitleService {
   ExternalSubtitleService(this.scraperApiUrl);
 
   final String scraperApiUrl;
 
   /// Fetch external subtitles for a movie using TMDB ID
-  Future<List<ExternalSubtitle>> fetchMovieSubtitles(int tmdbId) {
-    return ScraperApi(scraperApiUrl).searchSubtitles(tmdbId: tmdbId);
+  Future<List<ExternalSubtitle>> fetchMovieSubtitles(int tmdbId) async {
+    try {
+      final fromScraper =
+          await ScraperApi(scraperApiUrl).searchSubtitles(tmdbId: tmdbId);
+      if (fromScraper.isNotEmpty) return fromScraper;
+    } catch (_) {
+      // Fall through to the OpenSubtitles fallback below.
+    }
+    final imdbId = await const OpenSubtitlesService()
+        .fetchImdbId(tmdbId: tmdbId, isMovie: true);
+    if (imdbId == null) return const [];
+    return const OpenSubtitlesService().searchMovie(imdbId);
   }
 
   /// Fetch external subtitles for a TV episode using TMDB ID, season, and episode
@@ -27,12 +42,22 @@ class ExternalSubtitleService {
     int tmdbId,
     int seasonNumber,
     int episodeNumber,
-  ) {
-    return ScraperApi(scraperApiUrl).searchSubtitles(
-      tmdbId: tmdbId,
-      season: seasonNumber,
-      episode: episodeNumber,
-    );
+  ) async {
+    try {
+      final fromScraper = await ScraperApi(scraperApiUrl).searchSubtitles(
+        tmdbId: tmdbId,
+        season: seasonNumber,
+        episode: episodeNumber,
+      );
+      if (fromScraper.isNotEmpty) return fromScraper;
+    } catch (_) {
+      // Fall through to the OpenSubtitles fallback below.
+    }
+    final imdbId = await const OpenSubtitlesService()
+        .fetchImdbId(tmdbId: tmdbId, isMovie: false);
+    if (imdbId == null) return const [];
+    return const OpenSubtitlesService()
+        .searchEpisode(imdbId, seasonNumber, episodeNumber);
   }
 
   /// Download and convert ExternalSubtitle to BetterPlayerSubtitlesSource with parsed content
@@ -67,6 +92,8 @@ class ExternalSubtitleService {
 
   /// Downloads a subtitle file from the API, which always answers in UTF-8, so
   /// malformed bytes are replaced instead of probed for a code page.
+  /// OpenSubtitles download links serve gzip-compressed files, which are
+  /// transparently decompressed first.
   static Future<String> _downloadSubtitle(String url) async {
     final retryOptions = RetryOptions(maxAttempts: 3);
 
@@ -80,11 +107,21 @@ class ExternalSubtitleService {
         throw Exception('HTTP ${response.statusCode}');
       }
 
-      final decoded = utf8.decode(response.bodyBytes, allowMalformed: true);
+      final decoded = _decodeSubtitleBytes(response.bodyBytes);
       // An error page is never a subtitle file.
       return decoded.trimLeft().startsWith('<') ? '' : decoded;
     } catch (e) {
       throw Exception('Download failed: $e');
+    }
+  }
+
+  /// Decompresses gzip-compressed subtitle files (OpenSubtitles serves .gz),
+  /// falling back to plain UTF-8 decoding for regular files.
+  static String _decodeSubtitleBytes(List<int> bytes) {
+    try {
+      return utf8.decode(gzip.decode(bytes), allowMalformed: true);
+    } catch (_) {
+      return utf8.decode(bytes, allowMalformed: true);
     }
   }
 }
