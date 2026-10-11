@@ -1496,6 +1496,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                 movieId: widget.movieMetadata!.movieId!,
                 scraperApiUrl: _resolveScraperApiUrl(),
                 full: true,
+                title: widget.movieMetadata?.movieName,
               )
             : ProviderLoader.loadTVFromProvider(
                 provider: provider!,
@@ -1504,6 +1505,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                 episodeNumber: widget.tvMetadata!.episodeNumber!,
                 scraperApiUrl: _resolveScraperApiUrl(),
                 full: true,
+                title: widget.tvMetadata?.seriesName,
               );
     await _initialDataSourceReady.future;
     if (!mounted || providerCode != _currentProviderCode) return;
@@ -2810,6 +2812,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                     provider: provider,
                     movieId: widget.movieMetadata!.movieId!,
                     scraperApiUrl: _resolveScraperApiUrl(),
+                    title: widget.movieMetadata?.movieName,
                   )
                 : ProviderLoader.loadTVFromProvider(
                     provider: provider,
@@ -2817,6 +2820,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                     seasonNumber: widget.tvMetadata!.seasonNumber!,
                     episodeNumber: widget.tvMetadata!.episodeNumber!,
                     scraperApiUrl: _resolveScraperApiUrl(),
+                    title: widget.tvMetadata?.seriesName,
                   );
         final result = await resultFuture;
         if (!result.success || result.videoLinks?.isEmpty != false) {
