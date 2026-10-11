@@ -303,6 +303,25 @@ class ScraperApi {
           errorMessage: _messageFrom(body, response.statusCode),
         );
       }
+
+      // Pre-download subtitle contents (same approach as NetMirror): scraper
+      // subtitle URLs are frequently dead or blocked by the time the player
+      // requests them, so fetch the text now while the provider load is open.
+      // Subtitles that fail to download keep their URL for the player to try.
+      if (subtitles.isNotEmpty) {
+        final downloads = <Future<void>>[];
+        for (final subtitle in subtitles) {
+          final url = subtitle.url;
+          if (url == null || url.isEmpty) continue;
+          downloads.add(
+            _downloadSubtitleContent(url, subtitle.headers).then((content) {
+              if (content != null) subtitle.content = content;
+            }),
+          );
+        }
+        await Future.wait(downloads);
+      }
+
       return ProviderLoadResult(
         success: true,
         videoLinks: links,
@@ -335,6 +354,32 @@ class ScraperApi {
           body: jsonEncode(body),
         )
         .timeout(timeout);
+  }
+
+  /// Downloads a subtitle file's text so the player can use it directly
+  /// instead of fetching the (often dead or rate-limited) subtitle URL later.
+  /// Returns the file content, or null when the fetch fails or the response
+  /// is not actually a subtitle file.
+  Future<String?> _downloadSubtitleContent(
+    String url,
+    Map<String, String>? headers,
+  ) async {
+    try {
+      final response = await _client
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200 || response.body.isEmpty) return null;
+      final head = response.body.length > 200
+          ? response.body.substring(0, 200)
+          : response.body;
+      final trimmed = head.trimLeft().toLowerCase();
+      if (trimmed.startsWith('<html') || trimmed.startsWith('<!doctype')) {
+        return null;
+      }
+      return response.body;
+    } catch (_) {
+      return null;
+    }
   }
 
   void _logRequest(Uri uri, {String method = 'GET'}) {
