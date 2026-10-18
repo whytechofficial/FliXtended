@@ -543,6 +543,11 @@ class CodegenLoader extends AssetLoader{
   "goto_update": "انتقل إلى شاشة التحديث",
   "disable_notification_version": "تعطيل الإخطار لهذا الإصدار",
   "report_telegram": "انضم إلى مجموعة Telegram الخاصة بنا",
+  "telegram_prompt_title": "انضم إلى قناتنا على Telegram",
+  "telegram_prompt_message": "كن أول من يعرف بالإصدارات الجديدة والإصلاحات والإعلانات.",
+  "telegram_prompt_join": "الانضمام إلى القناة",
+  "telegram_prompt_dont_show_again": "عدم الإظهار مرة أخرى",
+  "telegram_prompt_scan": "امسح رمز QR هذا بهاتفك للانضمام إلى قناتنا على Telegram.",
   "check_connection": "اتصل بالإنترنت للمتابعة.",
   "open_external": "فتح في مشغل خارجي",
   "no_channels": "لم يتم العثور على القنوات :(",
@@ -790,23 +795,30 @@ class CodegenLoader extends AssetLoader{
   "recent": "الأخيرة",
   "all_categories": "كل الفئات",
   "all_sports": "كل الرياضات",
-  "event_count": {
-    "zero": "لا مباريات",
-    "one": "مباراة واحدة",
-    "two": "مباراتان",
-    "few": "{} مباريات",
-    "many": "{} مباراة",
-    "other": "{} مباراة"
-  },
+  "my_sports": "رياضاتي",
+  "live_sports_prompt_title": "ما الرياضات التي تتابعها؟",
+  "live_sports_prompt_message": "سنعرضها أولاً في الجدول، وتبقى بقية الرياضات أسفلها مباشرة.",
+  "live_sports_skip": "تخطٍ",
+  "live_sport_soccer": "كرة القدم",
+  "live_sport_basketball": "كرة السلة",
+  "live_sport_tennis": "التنس",
+  "live_sport_cricket": "الكريكيت",
+  "live_sport_american_football": "كرة القدم الأمريكية",
+  "live_sport_combat": "الملاكمة وMMA",
+  "live_sport_motorsport": "رياضة السيارات",
+  "live_sport_ice_hockey": "هوكي الجليد",
+  "live_sport_baseball": "البيسبول",
+  "live_sport_rugby": "الرغبي",
+  "live_sport_golf": "الغولف",
+  "live_sport_cycling": "ركوب الدراجات",
+  "live_sport_darts": "السهام",
+  "live_sport_snooker": "السنوكر والبلياردو",
+  "live_sport_volleyball": "الكرة الطائرة",
+  "live_sport_handball": "كرة اليد",
+  "live_sport_horse_racing": "سباق الخيل",
+  "event_count": "{'zero': 'لا مباريات', 'one': 'مباراة واحدة', 'two': 'مباراتان', 'few': '{} مباريات', 'many': '{} مباراة', 'other': '{} مباراة'}",
   "times_in_zone": "الأوقات بتوقيت {zone}",
-  "channel_count": {
-    "zero": "لا قنوات",
-    "one": "قناة واحدة",
-    "two": "قناتان",
-    "few": "{} قنوات",
-    "many": "{} قناة",
-    "other": "{} قناة"
-  },
+  "channel_count": "{'zero': 'لا قنوات', 'one': 'قناة واحدة', 'two': 'قناتان', 'few': '{} قنوات', 'many': '{} قناة', 'other': '{} قناة'}",
   "channel_number": "القناة {id}",
   "share_channel": "مشاركة القناة",
   "remove_from_favorites": "إزالة من المفضلة",
@@ -821,14 +833,7 @@ class CodegenLoader extends AssetLoader{
   "choose_episode": "اختر حلقة",
   "guest_stars_line": "ضيوف الشرف: {names}",
   "writers_line": "الكتّاب: {names}",
-  "video_source_count": {
-    "zero": "لا مصادر",
-    "one": "مصدر واحد",
-    "two": "مصدران",
-    "few": "{} مصادر",
-    "many": "{} مصدرًا",
-    "other": "{} مصدر"
-  },
+  "video_source_count": "{'zero': 'لا مصادر', 'one': 'مصدر واحد', 'two': 'مصدران', 'few': '{} مصادر', 'many': '{} مصدرًا', 'other': '{} مصدر'}",
   "never": "أبدًا",
   "n_minutes_ago": "منذ {n} د",
   "n_hours_ago": "منذ {n} س",
@@ -847,14 +852,7 @@ class CodegenLoader extends AssetLoader{
   "remove": "إزالة",
   "loading_episodes": "جارٍ تحميل الحلقات",
   "collection": "مجموعة",
-  "movie_count": {
-    "zero": "لا أفلام",
-    "one": "فيلم واحد",
-    "two": "فيلمان",
-    "few": "{} أفلام",
-    "many": "{} فيلمًا",
-    "other": "{} فيلم"
-  },
+  "movie_count": "{'zero': 'لا أفلام', 'one': 'فيلم واحد', 'two': 'فيلمان', 'few': '{} أفلام', 'many': '{} فيلمًا', 'other': '{} فيلم'}",
   "ins_title": "إحصاءات المشاهدة",
   "ins_options": "خيارات إحصاءات المشاهدة",
   "ins_share_recap": "مشاركة الملخص",
@@ -894,14 +892,7 @@ class CodegenLoader extends AssetLoader{
   "ins_export_desc": "نزّل جلساتك بصيغتي JSON وCSV.",
   "ins_clear_title": "مسح سجل المشاهدة",
   "ins_clear_desc": "احذف كل الجلسات المخزنة محليًا والمتزامنة.",
-  "ins_active_days": {
-    "zero": "لا أيام نشطة",
-    "one": "يوم نشط واحد",
-    "two": "يومان نشطان",
-    "few": "{} أيام نشطة",
-    "many": "{} يومًا نشطًا",
-    "other": "{} يوم نشط"
-  },
+  "ins_active_days": "{'zero': 'لا أيام نشطة', 'one': 'يوم نشط واحد', 'two': 'يومان نشطان', 'few': '{} أيام نشطة', 'many': '{} يومًا نشطًا', 'other': '{} يوم نشط'}",
   "ins_caption": "{period} على FliXtended: {time} من القصص خلال {days}.",
   "ins_caption_top": " كان العنوان الأكثر مشاهدة لديّ {title}.",
   "ins_caption_copied": "تم نسخ النص",
@@ -991,28 +982,14 @@ class CodegenLoader extends AssetLoader{
   "ins_nothing_range": "لم يُسجَّل شيء في هذه الفترة بعد.",
   "ins_timeline_summary": "اضغط على أي عمود لعرض ذلك {unit}. الأكثر نشاطًا كان {label} بمقدار {time}؛ يحدد الخط متوسطك {average} خلال {n} {units} نشطة.",
   "ins_no_viewing": "لا توجد مشاهدة مسجلة",
-  "ins_session_count": {
-    "zero": "لا جلسات",
-    "one": "جلسة واحدة",
-    "two": "جلستان",
-    "few": "{} جلسات",
-    "many": "{} جلسة",
-    "other": "{} جلسة"
-  },
+  "ins_session_count": "{'zero': 'لا جلسات', 'one': 'جلسة واحدة', 'two': 'جلستان', 'few': '{} جلسات', 'many': '{} جلسة', 'other': '{} جلسة'}",
   "ins_bucket_share": "{share} من الفترة · {sessions}",
   "ins_more_this": "+{n} أخرى في هذا {unit}",
   "ins_col_time": "الوقت",
   "ins_col_share": "النسبة",
   "ins_consistency": "الانتظام",
   "ins_no_streak": "لا توجد سلسلة نشطة الآن",
-  "ins_streak_row": {
-    "zero": "لا أيام متتالية",
-    "one": "يوم واحد متتالٍ",
-    "two": "يومان متتاليان",
-    "few": "{} أيام متتالية",
-    "many": "{} يومًا متتاليًا",
-    "other": "{} يوم متتالٍ"
-  },
+  "ins_streak_row": "{'zero': 'لا أيام متتالية', 'one': 'يوم واحد متتالٍ', 'two': 'يومان متتاليان', 'few': '{} أيام متتالية', 'many': '{} يومًا متتاليًا', 'other': '{} يوم متتالٍ'}",
   "ins_longest_streak": "أطول سلسلة",
   "ins_daily_semantics": "وقت المشاهدة اليومي لآخر 14 يومًا. شهد {n} من 14 يومًا مشاهدة.",
   "ins_last_14_active": "آخر 14 يومًا · {n} نشطة",
@@ -1061,14 +1038,7 @@ class CodegenLoader extends AssetLoader{
   "ins_empty_start": "قصة مشاهدتك تبدأ هنا",
   "ins_empty_period_desc": "جرّب فترة زمنية أخرى لاستعادة مشاهداتك السابقة.",
   "ins_empty_start_desc": "شاهد 30 ثانية على الأقل وسيبدأ FliXtended ببناء إحصاءات خاصة عن وقتك وعناوينك وذوقك وأنماطك.",
-  "ins_episode_count": {
-    "zero": "لا حلقات",
-    "one": "حلقة واحدة",
-    "two": "حلقتان",
-    "few": "{} حلقات",
-    "many": "{} حلقة",
-    "other": "{} حلقة"
-  },
+  "ins_episode_count": "{'zero': 'لا حلقات', 'one': 'حلقة واحدة', 'two': 'حلقتان', 'few': '{} حلقات', 'many': '{} حلقة', 'other': '{} حلقة'}",
   "ins_tracking_begins": "يبدأ التتبع مع جلسة مشاهدتك التالية",
   "ins_tracking_since": "التتبع منذ {date}",
   "ins_unit_day": "يوم",
@@ -1120,6 +1090,7 @@ class CodegenLoader extends AssetLoader{
   "player_stretch_description": "ملء الشاشة دون قص",
   "player_live": "مباشر",
   "player_playback_failed": "تعذّر التشغيل",
+  "player_waiting_for_network": "لا يوجد اتصال بالإنترنت. سيُستأنف التشغيل عند عودة الاتصال.",
   "player_playback_failed_hint": "تعذّر تشغيل هذا البث. جرّب مزوّدًا آخر أو أعد المحاولة.",
   "player_playback_retry_hint": "تعذّر تشغيل هذا الفيديو. أعد المحاولة.",
   "player_backup_streams": "بثوث احتياطية",
@@ -1466,13 +1437,7 @@ class CodegenLoader extends AssetLoader{
   "tv_popular_on": "الأكثر شعبية على {service}",
   "tv_search_genre_description": "الأكثر مشاهدة من {kind} من نوع {genre}.",
   "tv_library_all": "كل {kind} · {count}",
-  "tv_title_count": {
-    "one": "{count} عنوان",
-    "two": "{count} عنوانان",
-    "few": "{count} عناوين",
-    "many": "{count} عنوان",
-    "other": "{count} عنوان"
-  },
+  "tv_title_count": "{'one': '{count} عنوان', 'two': '{count} عنوانان', 'few': '{count} عناوين', 'many': '{count} عنوان', 'other': '{count} عنوان'}",
   "tv_library_description": "كل {kind} في قائمتي، الأحدث إضافةً أولاً.",
   "tv_resume_episode": "متابعة {episode}",
   "tv_play_first_episode": "تشغيل الموسم {season} الحلقة 1",
@@ -1499,20 +1464,8 @@ class CodegenLoader extends AssetLoader{
   "tv_category_semantics": "فئة {category}",
   "tv_letter_channels": "قنوات تبدأ بـ {letter}",
   "tv_day_schedule": "جدول {day}",
-  "tv_events_count": {
-    "one": "{count} حدث",
-    "two": "{count} حدثان",
-    "few": "{count} أحداث",
-    "many": "{count} حدث",
-    "other": "{count} حدث"
-  },
-  "tv_channels_count": {
-    "one": "{count} قناة",
-    "two": "{count} قناتان",
-    "few": "{count} قنوات",
-    "many": "{count} قناة",
-    "other": "{count} قناة"
-  },
+  "tv_events_count": "{'one': '{count} حدث', 'two': '{count} حدثان', 'few': '{count} أحداث', 'many': '{count} حدث', 'other': '{count} حدث'}",
+  "tv_channels_count": "{'one': '{count} قناة', 'two': '{count} قناتان', 'few': '{count} قنوات', 'many': '{count} قناة', 'other': '{count} قناة'}",
   "tv_event_semantics": "{title}، {channels}، {state}",
   "tv_expanded": "موسع",
   "tv_collapsed": "مطوي",
@@ -1522,20 +1475,8 @@ class CodegenLoader extends AssetLoader{
   "tv_active_period_summary": "{count} {unit} نشطة · متوسط يوم المشاهدة {time}",
   "tv_busiest_period": "أكثر {unit} مشاهدة: {label} · {time}",
   "tv_active_days_of": "{active} من {total}",
-  "tv_days_count": {
-    "one": "{count} يوم",
-    "two": "{count} يومان",
-    "few": "{count} أيام",
-    "many": "{count} يوم",
-    "other": "{count} يوم"
-  },
-  "tv_episodes_count": {
-    "one": "{count} حلقة",
-    "two": "{count} حلقتان",
-    "few": "{count} حلقات",
-    "many": "{count} حلقة",
-    "other": "{count} حلقة"
-  },
+  "tv_days_count": "{'one': '{count} يوم', 'two': '{count} يومان', 'few': '{count} أيام', 'many': '{count} يوم', 'other': '{count} يوم'}",
+  "tv_episodes_count": "{'one': '{count} حلقة', 'two': '{count} حلقتان', 'few': '{count} حلقات', 'many': '{count} حلقة', 'other': '{count} حلقة'}",
   "tv_busiest_window": "أكثر فترة مشاهدة: {day} الساعة {hour} · {time}",
   "tv_duration": "{hours} س {minutes} د",
   "tv_seconds": "{seconds} ث",
@@ -1556,9 +1497,14 @@ class CodegenLoader extends AssetLoader{
   "player_default": "افتراضي",
   "video_quality": "جودة الفيديو",
   "tv_current_provider": "المزود الحالي",
-  "tv_font_weight_light": "خفيف"
+  "tv_font_weight_light": "خفيف",
+  "ad_blocker_title": "أوقف مانع الإعلانات",
+  "ad_blocker_message": "FlixQuest مجاني بفضل الإعلانات. للتشغيل أو التنزيل، أوقف مانع الإعلانات لتطبيق FlixQuest، ثم اضغط \"أوقفته\".",
+  "ad_blocker_private_dns_hint": "هل تستخدم DNS خاصًا مثل AdGuard DNS أو NextDNS؟ اضبط DNS الخاص على تلقائي أو إيقاف في إعدادات الشبكة.",
+  "ad_blocker_still_detected": "مانع الإعلانات لا يزال يعمل. أوقفه أو اضبط DNS الخاص على تلقائي أو إيقاف، ثم حاول مرة أخرى.",
+  "ad_blocker_retry": "أوقفته",
 };
-static const Map<String,dynamic> _en = {
+  static const Map<String,dynamic> _en = {
   "popularity_descending": "Popularity descending",
   "popularity_ascending": "Popularity ascending",
   "average_vote_descending": "Average rating descending",
@@ -2087,6 +2033,11 @@ static const Map<String,dynamic> _en = {
   "goto_update": "Go to update screen",
   "disable_notification_version": "Disable notification for this version",
   "report_telegram": "Join our Telegram group",
+  "telegram_prompt_title": "Join our Telegram channel",
+  "telegram_prompt_message": "Be the first to hear about new releases, fixes and announcements.",
+  "telegram_prompt_join": "Join channel",
+  "telegram_prompt_dont_show_again": "Don't show again",
+  "telegram_prompt_scan": "Scan this QR code with your phone to join our Telegram channel.",
   "check_connection": "Connect to the internet to continue.",
   "open_external": "Open in external player",
   "no_channels": "No channels found :(",
@@ -2334,15 +2285,30 @@ static const Map<String,dynamic> _en = {
   "recent": "Recent",
   "all_categories": "All categories",
   "all_sports": "All sports",
-  "event_count": {
-    "one": "{} match",
-    "other": "{} matches"
-  },
+  "my_sports": "My sports",
+  "live_sports_prompt_title": "Which sports do you follow?",
+  "live_sports_prompt_message": "We’ll show them first in the schedule. Every other sport stays just below.",
+  "live_sports_skip": "Skip",
+  "live_sport_soccer": "Football (Soccer)",
+  "live_sport_basketball": "Basketball",
+  "live_sport_tennis": "Tennis",
+  "live_sport_cricket": "Cricket",
+  "live_sport_american_football": "American Football",
+  "live_sport_combat": "Boxing & MMA",
+  "live_sport_motorsport": "Motorsport",
+  "live_sport_ice_hockey": "Ice Hockey",
+  "live_sport_baseball": "Baseball",
+  "live_sport_rugby": "Rugby",
+  "live_sport_golf": "Golf",
+  "live_sport_cycling": "Cycling",
+  "live_sport_darts": "Darts",
+  "live_sport_snooker": "Snooker & Pool",
+  "live_sport_volleyball": "Volleyball",
+  "live_sport_handball": "Handball",
+  "live_sport_horse_racing": "Horse Racing",
+  "event_count": "{'one': '{} match', 'other': '{} matches'}",
   "times_in_zone": "Times in {zone}",
-  "channel_count": {
-    "one": "{} channel",
-    "other": "{} channels"
-  },
+  "channel_count": "{'one': '{} channel', 'other': '{} channels'}",
   "channel_number": "Channel {id}",
   "share_channel": "Share channel",
   "remove_from_favorites": "Remove from favorites",
@@ -2357,10 +2323,7 @@ static const Map<String,dynamic> _en = {
   "choose_episode": "Choose an episode",
   "guest_stars_line": "Guest stars: {names}",
   "writers_line": "Writers: {names}",
-  "video_source_count": {
-    "one": "{} source",
-    "other": "{} sources"
-  },
+  "video_source_count": "{'one': '{} source', 'other': '{} sources'}",
   "never": "Never",
   "n_minutes_ago": "{n}m ago",
   "n_hours_ago": "{n}h ago",
@@ -2379,10 +2342,7 @@ static const Map<String,dynamic> _en = {
   "remove": "Remove",
   "loading_episodes": "Loading episodes",
   "collection": "Collection",
-  "movie_count": {
-    "one": "{} movie",
-    "other": "{} movies"
-  },
+  "movie_count": "{'one': '{} movie', 'other': '{} movies'}",
   "ins_title": "Viewing Insights",
   "ins_options": "Viewing Insights options",
   "ins_share_recap": "Share recap",
@@ -2422,10 +2382,7 @@ static const Map<String,dynamic> _en = {
   "ins_export_desc": "Download your sessions as JSON and CSV.",
   "ins_clear_title": "Clear viewing history",
   "ins_clear_desc": "Remove all locally stored and synced sessions.",
-  "ins_active_days": {
-    "one": "{} active day",
-    "other": "{} active days"
-  },
+  "ins_active_days": "{'one': '{} active day', 'other': '{} active days'}",
   "ins_caption": "{period} on FliXtended: {time} of stories across {days}.",
   "ins_caption_top": " My most-watched title was {title}.",
   "ins_caption_copied": "Caption copied",
@@ -2515,20 +2472,14 @@ static const Map<String,dynamic> _en = {
   "ins_nothing_range": "Nothing recorded in this range yet.",
   "ins_timeline_summary": "Tap any bar for that {unit}. Busiest was {label} at {time}; the line marks your {average} average across {n} active {units}.",
   "ins_no_viewing": "No viewing recorded",
-  "ins_session_count": {
-    "one": "{} session",
-    "other": "{} sessions"
-  },
+  "ins_session_count": "{'one': '{} session', 'other': '{} sessions'}",
   "ins_bucket_share": "{share} of the range · {sessions}",
   "ins_more_this": "+{n} more this {unit}",
   "ins_col_time": "Time",
   "ins_col_share": "Share",
   "ins_consistency": "Consistency",
   "ins_no_streak": "No active streak right now",
-  "ins_streak_row": {
-    "one": "{} day in a row",
-    "other": "{} days in a row"
-  },
+  "ins_streak_row": "{'one': '{} day in a row', 'other': '{} days in a row'}",
   "ins_longest_streak": "longest streak",
   "ins_daily_semantics": "Daily watch time for the last 14 days. {n} of 14 days had viewing.",
   "ins_last_14_active": "Last 14 days · {n} active",
@@ -2577,10 +2528,7 @@ static const Map<String,dynamic> _en = {
   "ins_empty_start": "Your viewing story starts here",
   "ins_empty_period_desc": "Try another time range to revisit your earlier viewing.",
   "ins_empty_start_desc": "Watch for at least 30 seconds and FliXtended will start building private insights about your time, titles, taste and patterns.",
-  "ins_episode_count": {
-    "one": "{} ep",
-    "other": "{} eps"
-  },
+  "ins_episode_count": "{'one': '{} ep', 'other': '{} eps'}",
   "ins_tracking_begins": "Tracking begins with your next viewing session",
   "ins_tracking_since": "Tracking since {date}",
   "ins_unit_day": "day",
@@ -2632,6 +2580,7 @@ static const Map<String,dynamic> _en = {
   "player_stretch_description": "Fill the screen without cropping",
   "player_live": "LIVE",
   "player_playback_failed": "Playback failed",
+  "player_waiting_for_network": "No internet connection. Playback resumes when you reconnect.",
   "player_playback_failed_hint": "This stream couldn’t play. Try another provider or retry.",
   "player_playback_retry_hint": "This video couldn’t play. Please try again.",
   "player_backup_streams": "Backup streams",
@@ -2978,10 +2927,7 @@ static const Map<String,dynamic> _en = {
   "tv_popular_on": "Popular on {service}",
   "tv_search_genre_description": "The most watched {genre} {kind}.",
   "tv_library_all": "All {kind} · {count}",
-  "tv_title_count": {
-    "one": "{count} title",
-    "other": "{count} titles"
-  },
+  "tv_title_count": "{'one': '{count} title', 'other': '{count} titles'}",
   "tv_library_description": "Every {kind} in My List, most recently added first.",
   "tv_resume_episode": "Resume {episode}",
   "tv_play_first_episode": "Play S{season}:E1",
@@ -3008,14 +2954,8 @@ static const Map<String,dynamic> _en = {
   "tv_category_semantics": "{category} category",
   "tv_letter_channels": "Channels starting with {letter}",
   "tv_day_schedule": "{day} schedule",
-  "tv_events_count": {
-    "one": "{count} event",
-    "other": "{count} events"
-  },
-  "tv_channels_count": {
-    "one": "{count} channel",
-    "other": "{count} channels"
-  },
+  "tv_events_count": "{'one': '{count} event', 'other': '{count} events'}",
+  "tv_channels_count": "{'one': '{count} channel', 'other': '{count} channels'}",
   "tv_event_semantics": "{title}, {channels}, {state}",
   "tv_expanded": "expanded",
   "tv_collapsed": "collapsed",
@@ -3025,14 +2965,8 @@ static const Map<String,dynamic> _en = {
   "tv_active_period_summary": "{count} active {unit} · Average active day {time}",
   "tv_busiest_period": "Busiest {unit}: {label} · {time}",
   "tv_active_days_of": "{active} of {total}",
-  "tv_days_count": {
-    "one": "{count} day",
-    "other": "{count} days"
-  },
-  "tv_episodes_count": {
-    "one": "{count} episode",
-    "other": "{count} episodes"
-  },
+  "tv_days_count": "{'one': '{count} day', 'other': '{count} days'}",
+  "tv_episodes_count": "{'one': '{count} episode', 'other': '{count} episodes'}",
   "tv_busiest_window": "Busiest window: {day} at {hour} · {time}",
   "tv_duration": "{hours}h {minutes}m",
   "tv_seconds": "{seconds}s",
@@ -3053,9 +2987,14 @@ static const Map<String,dynamic> _en = {
   "player_default": "Default",
   "video_quality": "Video quality",
   "tv_current_provider": "Current provider",
-  "tv_font_weight_light": "Light"
+  "tv_font_weight_light": "Light",
+  "ad_blocker_title": "Turn off your ad blocker",
+  "ad_blocker_message": "FlixQuest is free because of ads. To play or download, turn off your ad blocker for FlixQuest, then tap \"I turned it off\".",
+  "ad_blocker_private_dns_hint": "Using Private DNS such as AdGuard DNS or NextDNS? Set Private DNS to Automatic or Off in your network settings.",
+  "ad_blocker_still_detected": "Your ad blocker is still on. Turn it off, or set Private DNS to Automatic or Off, then try again.",
+  "ad_blocker_retry": "I turned it off",
 };
-static const Map<String,dynamic> _es = {
+  static const Map<String,dynamic> _es = {
   "popularity_descending": "Popularidad descendiente",
   "popularity_ascending": "Popularidad ascendente",
   "average_vote_descending": "Puntuación media descendente",
@@ -3584,6 +3523,11 @@ static const Map<String,dynamic> _es = {
   "goto_update": "Ir a la pantalla de actualización",
   "disable_notification_version": "Desactivar notificación para esta versión",
   "report_telegram": "Únete a nuestro grupo de Telegram",
+  "telegram_prompt_title": "Únete a nuestro canal de Telegram",
+  "telegram_prompt_message": "Entérate antes que nadie de nuevas versiones, correcciones y anuncios.",
+  "telegram_prompt_join": "Unirme al canal",
+  "telegram_prompt_dont_show_again": "No volver a mostrar",
+  "telegram_prompt_scan": "Escanea este código QR con tu teléfono para unirte a nuestro canal de Telegram.",
   "check_connection": "Conéctese a Internet para continuar.",
   "open_external": "Abierta en reproductor externo",
   "no_channels": "No se encontraron canales :(",
@@ -3831,15 +3775,30 @@ static const Map<String,dynamic> _es = {
   "recent": "Recientes",
   "all_categories": "Todas las categorías",
   "all_sports": "Todos los deportes",
-  "event_count": {
-    "one": "{} partido",
-    "other": "{} partidos"
-  },
+  "my_sports": "Mis deportes",
+  "live_sports_prompt_title": "¿Qué deportes sigues?",
+  "live_sports_prompt_message": "Los mostraremos primero en la programación. Los demás deportes quedan justo debajo.",
+  "live_sports_skip": "Omitir",
+  "live_sport_soccer": "Fútbol",
+  "live_sport_basketball": "Baloncesto",
+  "live_sport_tennis": "Tenis",
+  "live_sport_cricket": "Críquet",
+  "live_sport_american_football": "Fútbol americano",
+  "live_sport_combat": "Boxeo y MMA",
+  "live_sport_motorsport": "Automovilismo",
+  "live_sport_ice_hockey": "Hockey sobre hielo",
+  "live_sport_baseball": "Béisbol",
+  "live_sport_rugby": "Rugby",
+  "live_sport_golf": "Golf",
+  "live_sport_cycling": "Ciclismo",
+  "live_sport_darts": "Dardos",
+  "live_sport_snooker": "Snooker y billar",
+  "live_sport_volleyball": "Voleibol",
+  "live_sport_handball": "Balonmano",
+  "live_sport_horse_racing": "Carreras de caballos",
+  "event_count": "{'one': '{} partido', 'other': '{} partidos'}",
   "times_in_zone": "Horas en {zone}",
-  "channel_count": {
-    "one": "{} canal",
-    "other": "{} canales"
-  },
+  "channel_count": "{'one': '{} canal', 'other': '{} canales'}",
   "channel_number": "Canal {id}",
   "share_channel": "Compartir canal",
   "remove_from_favorites": "Quitar de favoritos",
@@ -3854,10 +3813,7 @@ static const Map<String,dynamic> _es = {
   "choose_episode": "Elige un episodio",
   "guest_stars_line": "Estrellas invitadas: {names}",
   "writers_line": "Guionistas: {names}",
-  "video_source_count": {
-    "one": "{} fuente",
-    "other": "{} fuentes"
-  },
+  "video_source_count": "{'one': '{} fuente', 'other': '{} fuentes'}",
   "never": "Nunca",
   "n_minutes_ago": "hace {n} min",
   "n_hours_ago": "hace {n} h",
@@ -3876,10 +3832,7 @@ static const Map<String,dynamic> _es = {
   "remove": "Quitar",
   "loading_episodes": "Cargando episodios",
   "collection": "Colección",
-  "movie_count": {
-    "one": "{} película",
-    "other": "{} películas"
-  },
+  "movie_count": "{'one': '{} película', 'other': '{} películas'}",
   "ins_title": "Estadísticas de visualización",
   "ins_options": "Opciones de estadísticas",
   "ins_share_recap": "Compartir resumen",
@@ -3919,10 +3872,7 @@ static const Map<String,dynamic> _es = {
   "ins_export_desc": "Descarga tus sesiones en JSON y CSV.",
   "ins_clear_title": "Borrar historial de visualización",
   "ins_clear_desc": "Elimina todas las sesiones locales y sincronizadas.",
-  "ins_active_days": {
-    "one": "{} día activo",
-    "other": "{} días activos"
-  },
+  "ins_active_days": "{'one': '{} día activo', 'other': '{} días activos'}",
   "ins_caption": "{period} en FliXtended: {time} de historias en {days}.",
   "ins_caption_top": " Mi título más visto fue {title}.",
   "ins_caption_copied": "Texto copiado",
@@ -4012,20 +3962,14 @@ static const Map<String,dynamic> _es = {
   "ins_nothing_range": "Aún no hay nada registrado en este periodo.",
   "ins_timeline_summary": "Toca una barra para ver ese {unit}. El más activo fue {label} con {time}; la línea marca tu promedio de {average} en {n} {units} activos.",
   "ins_no_viewing": "Sin visualización registrada",
-  "ins_session_count": {
-    "one": "{} sesión",
-    "other": "{} sesiones"
-  },
+  "ins_session_count": "{'one': '{} sesión', 'other': '{} sesiones'}",
   "ins_bucket_share": "{share} del periodo · {sessions}",
   "ins_more_this": "+{n} más este {unit}",
   "ins_col_time": "Tiempo",
   "ins_col_share": "Porcentaje",
   "ins_consistency": "Constancia",
   "ins_no_streak": "Ahora mismo no tienes racha",
-  "ins_streak_row": {
-    "one": "{} día seguido",
-    "other": "{} días seguidos"
-  },
+  "ins_streak_row": "{'one': '{} día seguido', 'other': '{} días seguidos'}",
   "ins_longest_streak": "racha más larga",
   "ins_daily_semantics": "Tiempo visto al día en los últimos 14 días. {n} de 14 días con visualización.",
   "ins_last_14_active": "Últimos 14 días · {n} activos",
@@ -4074,10 +4018,7 @@ static const Map<String,dynamic> _es = {
   "ins_empty_start": "Tu historia de visualización empieza aquí",
   "ins_empty_period_desc": "Prueba otro periodo para ver lo que viste antes.",
   "ins_empty_start_desc": "Mira al menos 30 segundos y FliXtended empezará a crear estadísticas privadas sobre tu tiempo, títulos, gustos y patrones.",
-  "ins_episode_count": {
-    "one": "{} ep.",
-    "other": "{} eps."
-  },
+  "ins_episode_count": "{'one': '{} ep.', 'other': '{} eps.'}",
   "ins_tracking_begins": "El registro empieza con tu próxima sesión",
   "ins_tracking_since": "Registrando desde {date}",
   "ins_unit_day": "día",
@@ -4129,6 +4070,7 @@ static const Map<String,dynamic> _es = {
   "player_stretch_description": "Llena la pantalla sin recortar",
   "player_live": "EN VIVO",
   "player_playback_failed": "No se pudo reproducir",
+  "player_waiting_for_network": "Sin conexión a internet. La reproducción se reanudará cuando vuelvas a conectarte.",
   "player_playback_failed_hint": "No se pudo reproducir este contenido. Prueba otro proveedor o vuelve a intentarlo.",
   "player_playback_retry_hint": "No se pudo reproducir este vídeo. Vuelve a intentarlo.",
   "player_backup_streams": "Transmisiones alternativas",
@@ -4475,10 +4417,7 @@ static const Map<String,dynamic> _es = {
   "tv_popular_on": "Popular en {service}",
   "tv_search_genre_description": "Los títulos de {genre} más vistos en {kind}.",
   "tv_library_all": "Todo en {kind} · {count}",
-  "tv_title_count": {
-    "one": "{count} título",
-    "other": "{count} títulos"
-  },
+  "tv_title_count": "{'one': '{count} título', 'other': '{count} títulos'}",
   "tv_library_description": "Todo en {kind} de Mi lista, con lo añadido más recientemente primero.",
   "tv_resume_episode": "Continuar {episode}",
   "tv_play_first_episode": "Reproducir T{season}:E1",
@@ -4505,14 +4444,8 @@ static const Map<String,dynamic> _es = {
   "tv_category_semantics": "Categoría {category}",
   "tv_letter_channels": "Canales que empiezan por {letter}",
   "tv_day_schedule": "Programación de {day}",
-  "tv_events_count": {
-    "one": "{count} evento",
-    "other": "{count} eventos"
-  },
-  "tv_channels_count": {
-    "one": "{count} canal",
-    "other": "{count} canales"
-  },
+  "tv_events_count": "{'one': '{count} evento', 'other': '{count} eventos'}",
+  "tv_channels_count": "{'one': '{count} canal', 'other': '{count} canales'}",
   "tv_event_semantics": "{title}, {channels}, {state}",
   "tv_expanded": "expandido",
   "tv_collapsed": "contraído",
@@ -4522,14 +4455,8 @@ static const Map<String,dynamic> _es = {
   "tv_active_period_summary": "{count} {unit} activos · Día activo medio {time}",
   "tv_busiest_period": "{unit} con más actividad: {label} · {time}",
   "tv_active_days_of": "{active} de {total}",
-  "tv_days_count": {
-    "one": "{count} día",
-    "other": "{count} días"
-  },
-  "tv_episodes_count": {
-    "one": "{count} episodio",
-    "other": "{count} episodios"
-  },
+  "tv_days_count": "{'one': '{count} día', 'other': '{count} días'}",
+  "tv_episodes_count": "{'one': '{count} episodio', 'other': '{count} episodios'}",
   "tv_busiest_window": "Franja más activa: {day} a las {hour} · {time}",
   "tv_duration": "{hours}h {minutes}min",
   "tv_seconds": "{seconds}s",
@@ -4550,9 +4477,14 @@ static const Map<String,dynamic> _es = {
   "player_default": "Predeterminado",
   "video_quality": "Calidad de vídeo",
   "tv_current_provider": "Proveedor actual",
-  "tv_font_weight_light": "Ligero"
+  "tv_font_weight_light": "Ligero",
+  "ad_blocker_title": "Desactiva tu bloqueador de anuncios",
+  "ad_blocker_message": "FlixQuest es gratis gracias a los anuncios. Para reproducir o descargar, desactiva tu bloqueador de anuncios para FlixQuest y toca \"Ya lo desactivé\".",
+  "ad_blocker_private_dns_hint": "¿Usas un DNS privado como AdGuard DNS o NextDNS? Configura el DNS privado en Automático o Desactivado en los ajustes de red.",
+  "ad_blocker_still_detected": "Tu bloqueador de anuncios sigue activo. Desactívalo o configura el DNS privado en Automático o Desactivado y vuelve a intentarlo.",
+  "ad_blocker_retry": "Ya lo desactivé",
 };
-static const Map<String,dynamic> _hi = {
+  static const Map<String,dynamic> _hi = {
   "popularity_descending": "लोकप्रियता घटती",
   "popularity_ascending": "लोकप्रियता बढ़ती",
   "average_vote_descending": "औसत रेटिंग घटती",
@@ -4678,7 +4610,7 @@ static const Map<String,dynamic> _hi = {
   "bug_notice": "किसी बग की सूचना मिली? मुझे टेलीग्राम पर सूचित करें, यहां क्लिक करें",
   "report_issue": "समस्या रिपोर्ट करें",
   "follow_cinemax": "विभिन्न प्लेटफॉर्म पर सिनेमैक्स को फॉलो करें",
-  "made_with": "बीमलाक अचालेव द्वारा ❤️ के साथ बनाया गया",
+  "made_with": "FlixQuest द्वारा ❤️ के साथ बनाया गया",
   "year_range": "{startYear} ई.सी., {endYear} जी.सी.",
   "bookmarks": "बुकमार्क",
   "bookmark_home": "बुकमार्क",
@@ -5081,6 +5013,11 @@ static const Map<String,dynamic> _hi = {
   "goto_update": "अपडेट स्क्रीन पर जाएं",
   "disable_notification_version": "इस संस्करण के लिए अधिसूचना अक्षम करें",
   "report_telegram": "हमारे टेलीग्राम समूह से जुड़ें",
+  "telegram_prompt_title": "हमारे Telegram चैनल से जुड़ें",
+  "telegram_prompt_message": "नए रिलीज़, सुधार और घोषणाओं के बारे में सबसे पहले जानें।",
+  "telegram_prompt_join": "चैनल से जुड़ें",
+  "telegram_prompt_dont_show_again": "फिर से न दिखाएँ",
+  "telegram_prompt_scan": "हमारे Telegram चैनल से जुड़ने के लिए अपने फ़ोन से यह QR कोड स्कैन करें।",
   "check_connection": "जारी रखने के लिए इंटरनेट से कनेक्ट करें.",
   "open_external": "बाहरी प्लेयर में खोलें",
   "no_channels": "कोई चैनल नहीं मिला :(",
@@ -5328,15 +5265,30 @@ static const Map<String,dynamic> _hi = {
   "recent": "हाल के",
   "all_categories": "सभी श्रेणियाँ",
   "all_sports": "सभी खेल",
-  "event_count": {
-    "one": "{} मैच",
-    "other": "{} मैच"
-  },
+  "my_sports": "मेरे खेल",
+  "live_sports_prompt_title": "आप कौन से खेल देखते हैं?",
+  "live_sports_prompt_message": "हम इन्हें शेड्यूल में सबसे पहले दिखाएंगे। बाकी सभी खेल ठीक नीचे रहेंगे।",
+  "live_sports_skip": "छोड़ें",
+  "live_sport_soccer": "फ़ुटबॉल (सॉकर)",
+  "live_sport_basketball": "बास्केटबॉल",
+  "live_sport_tennis": "टेनिस",
+  "live_sport_cricket": "क्रिकेट",
+  "live_sport_american_football": "अमेरिकन फ़ुटबॉल",
+  "live_sport_combat": "बॉक्सिंग और MMA",
+  "live_sport_motorsport": "मोटरस्पोर्ट",
+  "live_sport_ice_hockey": "आइस हॉकी",
+  "live_sport_baseball": "बेसबॉल",
+  "live_sport_rugby": "रग्बी",
+  "live_sport_golf": "गोल्फ़",
+  "live_sport_cycling": "साइक्लिंग",
+  "live_sport_darts": "डार्ट्स",
+  "live_sport_snooker": "स्नूकर और पूल",
+  "live_sport_volleyball": "वॉलीबॉल",
+  "live_sport_handball": "हैंडबॉल",
+  "live_sport_horse_racing": "घुड़दौड़",
+  "event_count": "{'one': '{} मैच', 'other': '{} मैच'}",
   "times_in_zone": "समय {zone} में",
-  "channel_count": {
-    "one": "{} चैनल",
-    "other": "{} चैनल"
-  },
+  "channel_count": "{'one': '{} चैनल', 'other': '{} चैनल'}",
   "channel_number": "चैनल {id}",
   "share_channel": "चैनल शेयर करें",
   "remove_from_favorites": "पसंदीदा से हटाएँ",
@@ -5351,10 +5303,7 @@ static const Map<String,dynamic> _hi = {
   "choose_episode": "एपिसोड चुनें",
   "guest_stars_line": "अतिथि कलाकार: {names}",
   "writers_line": "लेखक: {names}",
-  "video_source_count": {
-    "one": "{} स्रोत",
-    "other": "{} स्रोत"
-  },
+  "video_source_count": "{'one': '{} स्रोत', 'other': '{} स्रोत'}",
   "never": "कभी नहीं",
   "n_minutes_ago": "{n} मि. पहले",
   "n_hours_ago": "{n} घं. पहले",
@@ -5373,10 +5322,7 @@ static const Map<String,dynamic> _hi = {
   "remove": "हटाएँ",
   "loading_episodes": "एपिसोड लोड हो रहे हैं",
   "collection": "कलेक्शन",
-  "movie_count": {
-    "one": "{} फ़िल्म",
-    "other": "{} फ़िल्में"
-  },
+  "movie_count": "{'one': '{} फ़िल्म', 'other': '{} फ़िल्में'}",
   "ins_title": "देखने की जानकारी",
   "ins_options": "देखने की जानकारी के विकल्प",
   "ins_share_recap": "रीकैप शेयर करें",
@@ -5416,10 +5362,7 @@ static const Map<String,dynamic> _hi = {
   "ins_export_desc": "अपने सेशन JSON और CSV में डाउनलोड करें।",
   "ins_clear_title": "देखने का इतिहास साफ़ करें",
   "ins_clear_desc": "सभी लोकल और सिंक किए गए सेशन हटाएँ।",
-  "ins_active_days": {
-    "one": "{} सक्रिय दिन",
-    "other": "{} सक्रिय दिन"
-  },
+  "ins_active_days": "{'one': '{} सक्रिय दिन', 'other': '{} सक्रिय दिन'}",
   "ins_caption": "FliXtended पर {period}: {days} में {time} की कहानियाँ।",
   "ins_caption_top": " मेरा सबसे ज़्यादा देखा गया टाइटल {title} था।",
   "ins_caption_copied": "कैप्शन कॉपी हुआ",
@@ -5509,20 +5452,14 @@ static const Map<String,dynamic> _hi = {
   "ins_nothing_range": "इस अवधि में अभी कुछ दर्ज नहीं हुआ।",
   "ins_timeline_summary": "उस {unit} के लिए किसी बार पर टैप करें। सबसे व्यस्त {label} था, {time}; लाइन {n} सक्रिय {units} में आपका औसत {average} दिखाती है।",
   "ins_no_viewing": "कोई देखना दर्ज नहीं",
-  "ins_session_count": {
-    "one": "{} सेशन",
-    "other": "{} सेशन"
-  },
+  "ins_session_count": "{'one': '{} सेशन', 'other': '{} सेशन'}",
   "ins_bucket_share": "अवधि का {share} · {sessions}",
   "ins_more_this": "इस {unit} में +{n} और",
   "ins_col_time": "समय",
   "ins_col_share": "हिस्सा",
   "ins_consistency": "निरंतरता",
   "ins_no_streak": "अभी कोई सक्रिय लकीर नहीं",
-  "ins_streak_row": {
-    "one": "लगातार {} दिन",
-    "other": "लगातार {} दिन"
-  },
+  "ins_streak_row": "{'one': 'लगातार {} दिन', 'other': 'लगातार {} दिन'}",
   "ins_longest_streak": "सबसे लंबी लकीर",
   "ins_daily_semantics": "पिछले 14 दिनों का रोज़ का देखने का समय। 14 में से {n} दिन देखा गया।",
   "ins_last_14_active": "पिछले 14 दिन · {n} सक्रिय",
@@ -5571,10 +5508,7 @@ static const Map<String,dynamic> _hi = {
   "ins_empty_start": "आपकी देखने की कहानी यहाँ से शुरू होती है",
   "ins_empty_period_desc": "पहले का देखा हुआ देखने के लिए कोई और अवधि चुनें।",
   "ins_empty_start_desc": "कम से कम 30 सेकंड देखें और FliXtended आपके समय, टाइटल, पसंद और पैटर्न की निजी जानकारी बनाना शुरू करेगा।",
-  "ins_episode_count": {
-    "one": "{} एपि.",
-    "other": "{} एपि."
-  },
+  "ins_episode_count": "{'one': '{} एपि.', 'other': '{} एपि.'}",
   "ins_tracking_begins": "ट्रैकिंग आपके अगले सेशन से शुरू होगी",
   "ins_tracking_since": "{date} से ट्रैकिंग",
   "ins_unit_day": "दिन",
@@ -5626,6 +5560,7 @@ static const Map<String,dynamic> _hi = {
   "player_stretch_description": "बिना क्रॉप किए स्क्रीन भरें",
   "player_live": "लाइव",
   "player_playback_failed": "प्लेबैक विफल रहा",
+  "player_waiting_for_network": "इंटरनेट कनेक्शन नहीं है। कनेक्शन लौटते ही प्लेबैक फिर शुरू होगा।",
   "player_playback_failed_hint": "यह स्ट्रीम नहीं चल सकी। दूसरा प्रदाता चुनें या फिर से कोशिश करें।",
   "player_playback_retry_hint": "यह वीडियो नहीं चल सका। फिर से कोशिश करें।",
   "player_backup_streams": "बैकअप स्ट्रीम",
@@ -5972,10 +5907,7 @@ static const Map<String,dynamic> _hi = {
   "tv_popular_on": "{service} पर लोकप्रिय",
   "tv_search_genre_description": "सबसे अधिक देखे गए {genre} {kind}।",
   "tv_library_all": "सभी {kind} · {count}",
-  "tv_title_count": {
-    "one": "{count} शीर्षक",
-    "other": "{count} शीर्षक"
-  },
+  "tv_title_count": "{'one': '{count} शीर्षक', 'other': '{count} शीर्षक'}",
   "tv_library_description": "मेरी सूची में सभी {kind}, हाल में जोड़े गए पहले।",
   "tv_resume_episode": "{episode} जारी रखें",
   "tv_play_first_episode": "सीज़न {season} एपिसोड 1 चलाएं",
@@ -6002,14 +5934,8 @@ static const Map<String,dynamic> _hi = {
   "tv_category_semantics": "{category} श्रेणी",
   "tv_letter_channels": "{letter} से शुरू होने वाले चैनल",
   "tv_day_schedule": "{day} का कार्यक्रम",
-  "tv_events_count": {
-    "one": "{count} इवेंट",
-    "other": "{count} इवेंट"
-  },
-  "tv_channels_count": {
-    "one": "{count} चैनल",
-    "other": "{count} चैनल"
-  },
+  "tv_events_count": "{'one': '{count} इवेंट', 'other': '{count} इवेंट'}",
+  "tv_channels_count": "{'one': '{count} चैनल', 'other': '{count} चैनल'}",
   "tv_event_semantics": "{title}, {channels}, {state}",
   "tv_expanded": "विस्तृत",
   "tv_collapsed": "संक्षिप्त",
@@ -6019,14 +5945,8 @@ static const Map<String,dynamic> _hi = {
   "tv_active_period_summary": "{count} सक्रिय {unit} · औसत सक्रिय दिन {time}",
   "tv_busiest_period": "सबसे सक्रिय {unit}: {label} · {time}",
   "tv_active_days_of": "{total} में से {active}",
-  "tv_days_count": {
-    "one": "{count} दिन",
-    "other": "{count} दिन"
-  },
-  "tv_episodes_count": {
-    "one": "{count} एपिसोड",
-    "other": "{count} एपिसोड"
-  },
+  "tv_days_count": "{'one': '{count} दिन', 'other': '{count} दिन'}",
+  "tv_episodes_count": "{'one': '{count} एपिसोड', 'other': '{count} एपिसोड'}",
   "tv_busiest_window": "सबसे सक्रिय समय: {day}, {hour} बजे · {time}",
   "tv_duration": "{hours}घं {minutes}मि",
   "tv_seconds": "{seconds}से",
@@ -6047,7 +5967,12 @@ static const Map<String,dynamic> _hi = {
   "player_default": "डिफ़ॉल्ट",
   "video_quality": "वीडियो की गुणवत्ता",
   "tv_current_provider": "वर्तमान प्रदाता",
-  "tv_font_weight_light": "हल्का"
+  "tv_font_weight_light": "हल्का",
+  "ad_blocker_title": "अपना ऐड ब्लॉकर बंद करें",
+  "ad_blocker_message": "FlixQuest विज्ञापनों की वजह से मुफ़्त है। चलाने या डाउनलोड करने के लिए FlixQuest के लिए अपना ऐड ब्लॉकर बंद करें, फिर \"मैंने बंद कर दिया\" पर टैप करें।",
+  "ad_blocker_private_dns_hint": "क्या आप AdGuard DNS या NextDNS जैसा Private DNS इस्तेमाल करते हैं? नेटवर्क सेटिंग में Private DNS को Automatic या Off पर सेट करें।",
+  "ad_blocker_still_detected": "आपका ऐड ब्लॉकर अभी भी चालू है। उसे बंद करें या Private DNS को Automatic या Off पर सेट करें, फिर दोबारा कोशिश करें।",
+  "ad_blocker_retry": "मैंने बंद कर दिया",
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"ar": _ar, "en": _en, "es": _es, "hi": _hi};
 }

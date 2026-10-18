@@ -56,16 +56,16 @@ class VideoProvider {
   );
 
   static const directCastle = VideoProvider(
-    fullName: 'Castle',
-    alias: 'Castle Direct',
+    fullName: 'Hampi',
+    alias: 'Hampi',
     codeName: 'direct:castle',
     type: VideoProviderType.directCastle,
     apiId: 'castle',
   );
 
   static const directNetMirror = VideoProvider(
-    fullName: 'NetMirror',
-    alias: 'NetMirror Direct',
+    fullName: 'Nalanda',
+    alias: 'Nalanda',
     codeName: 'direct:netmirror',
     content: 'Movies and TV | Multi-quality MP4 | Subtitles',
     type: VideoProviderType.directNetMirror,
@@ -73,8 +73,8 @@ class VideoProvider {
   );
 
   static const directMxPlayer = VideoProvider(
-    fullName: 'MX Player',
-    alias: 'MX Player Direct',
+    fullName: 'Dholavira',
+    alias: 'Dholavira',
     codeName: 'direct:mxplayer',
     content: 'Movies and TV | Indian catalog | HLS',
     type: VideoProviderType.directMxPlayer,

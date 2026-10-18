@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -42,6 +43,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
   final UpdateDownloadManager _downloadManager = UpdateDownloadManager();
   PackageInfo? _packageInfo;
   String _savedDir = '';
+  List<String> _deviceAbis = const [];
   Object? _error;
   bool _showingMandatoryDialog = false;
 
@@ -82,11 +84,13 @@ class _UpdateScreenState extends State<UpdateScreen> {
       final values = await Future.wait([
         PackageInfo.fromPlatform(),
         getTemporaryDirectory(),
+        _supportedAbis(),
       ]);
       if (!mounted) return;
       setState(() {
         _packageInfo = values[0] as PackageInfo;
         _savedDir = (values[1] as Directory).path;
+        _deviceAbis = values[2] as List<String>;
       });
     } on Exception catch (error) {
       if (!mounted) return;
@@ -94,6 +98,25 @@ class _UpdateScreenState extends State<UpdateScreen> {
       GlobalMethods.showErrorScaffoldMessengerGeneral(error, context);
     }
   }
+
+  /// The device's ABIs, most preferred first; empty when unknown, which
+  /// downloads the universal APK.
+  static Future<List<String>> _supportedAbis() async {
+    if (!Platform.isAndroid) return const [];
+    try {
+      return (await DeviceInfoPlugin().androidInfo).supportedAbis;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// The split APK matching this device, or the universal one.
+  String _downloadUrl(AppDependencyProvider config) =>
+      AppUpdateService.resolveDownloadUrl(
+        deviceAbis: _deviceAbis,
+        abiUrls: config.abiDownloadUrls,
+        universalUrl: config.appDownloadUrl,
+      );
 
   Future<void> _showMustUpdateDialog() async {
     if (_showingMandatoryDialog) return;
@@ -182,7 +205,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
   Widget _buildMobile() {
     final config = context.watch<AppDependencyProvider>();
     final version = _availableVersion(config);
-    final downloadUrl = config.appDownloadUrl;
+    final downloadUrl = _downloadUrl(config);
     return Scaffold(
       backgroundColor: AppPalette.of(context).page,
       appBar: PageAppBar(title: tr('check_for_update')),
@@ -190,7 +213,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
         loading: _error == null && _packageInfo == null,
         alignment: Alignment.topCenter,
         skeleton: const _UpdateSkeleton(),
-        child: _buildBody(config, version),
+        child: _buildBody(config, version, downloadUrl),
       ),
       // The action stays in reach however long the release notes run.
       bottomNavigationBar: version != null && downloadUrl.isNotEmpty
@@ -208,6 +231,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
 
   Widget _buildTvBody() {
     final config = context.watch<AppDependencyProvider>();
+    final downloadUrl = _downloadUrl(config);
     final available = _packageInfo != null &&
         AppUpdateService.isAvailable(
             packageInfo: _packageInfo!,
@@ -245,11 +269,11 @@ class _UpdateScreenState extends State<UpdateScreen> {
         else if (_packageInfo == null)
           const TvUpdateSkeleton()
         else if (available) ...[
-          if (config.appDownloadUrl.isNotEmpty)
+          if (downloadUrl.isNotEmpty)
             _DownloadCard(
                 appVersion: version,
-                url: config.appDownloadUrl,
-                task: _downloadManager.getDownload(config.appDownloadUrl),
+                url: downloadUrl,
+                task: _downloadManager.getDownload(downloadUrl),
                 onToggle: _toggleDownload,
                 onOpen: _openDownload,
                 onDelete: _deleteDownload)
@@ -270,8 +294,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
         TvUpdateAction(
             label: _forced ? tr('tv_exit_app') : tr('player_back'),
             autofocus: _error == null &&
-                (_packageInfo != null &&
-                    (!available || config.appDownloadUrl.isEmpty)),
+                (_packageInfo != null && (!available || downloadUrl.isEmpty)),
             onPressed: () {
               if (_forced) {
                 _showMustUpdateDialog();
@@ -283,7 +306,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
     );
   }
 
-  Widget _buildBody(AppDependencyProvider config, String? version) {
+  Widget _buildBody(
+      AppDependencyProvider config, String? version, String downloadUrl) {
     if (_error != null) {
       return EmptyState(
         icon: PhosphorIcons.wifiSlash(),
@@ -326,7 +350,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
               warning: true,
             ),
           ],
-          if (config.appDownloadUrl.isEmpty) ...[
+          if (downloadUrl.isEmpty) ...[
             const SizedBox(height: AppSpace.md),
             _UpdateNotice(
               icon: PhosphorIcons.clockCountdown(),

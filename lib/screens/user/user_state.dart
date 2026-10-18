@@ -14,7 +14,6 @@ import '../../tv/platform/device_presentation.dart';
 import '../../tv/platform/tv_debug_options.dart';
 import '../../tv/screens/tv_landing_screen.dart';
 import '../common/landing_screen.dart';
-import '../common/update_screen.dart';
 
 class UserState extends StatefulWidget {
   const UserState({

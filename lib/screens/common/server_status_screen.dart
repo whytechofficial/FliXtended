@@ -88,9 +88,9 @@ class _ServerStatusScreenState extends State<ServerStatusScreen> {
       MapEntry('direct:mxplayer', 'https://api.mxplayer.in'),
     ];
     const names = <String, String>{
-      'direct:castle': 'Castle Direct',
-      'direct:netmirror': 'NetMirror Direct',
-      'direct:mxplayer': 'MX Player Direct',
+      'direct:castle': 'Hampi',
+      'direct:netmirror': 'Nalanda',
+      'direct:mxplayer': 'Dholavira',
     };
     final results = await Future.wait(
       checks.map((check) async {
