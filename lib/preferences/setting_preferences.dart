@@ -198,6 +198,25 @@ class SettingsPreferences {
   static const STREAM_PROVIDER_ORDER = 'stream_provider_order_v1';
   static const _LEGACY_PROVIDER_PRECEDENCE = 'providerPrecedence-v14';
 
+  /// Last manually-chosen provider per TV series (keyed by TMDB TV id), so
+  /// the next episode starts on the same provider instead of restarting from
+  /// the top of the provider order.
+  static const _LAST_TV_PROVIDER_PREFIX = 'last_tv_provider_';
+
+  Future<void> setLastTvProvider(int tvId, String providerCode) async {
+    await sharedPrefsSingleton.setString(
+      '$_LAST_TV_PROVIDER_PREFIX$tvId',
+      providerCode,
+    );
+  }
+
+  String? getLastTvProvider(int tvId) {
+    final code = sharedPrefsSingleton.getString(
+      '$_LAST_TV_PROVIDER_PREFIX$tvId',
+    );
+    return code == null || code.trim().isEmpty ? null : code;
+  }
+
   Future<void> setStreamProviderOrder(List<String> providerCodes) async {
     await sharedPrefsSingleton.setStringList(
       STREAM_PROVIDER_ORDER,

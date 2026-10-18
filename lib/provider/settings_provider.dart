@@ -387,6 +387,15 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remembers [providerCode] as the preferred provider for the TV series
+  /// [tvId], so the next episode starts there instead of at the top of the
+  /// provider order.
+  Future<void> setLastTvProvider(int tvId, String providerCode) =>
+      _settingsPreferences.setLastTvProvider(tvId, providerCode);
+
+  String? getLastTvProvider(int tvId) =>
+      _settingsPreferences.getLastTvProvider(tvId);
+
   bool _sameOrder(List<String> left, List<String> right) {
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index++) {

@@ -128,6 +128,22 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
       debugPrint('Unable to load scraper providers: $error');
     }
     final orderedProviders = settings.orderStreamProviders(providers);
+    // Sticky provider: when the user picked a provider for this series
+    // before, the next episode starts the race there instead of from the
+    // top of the order. If it has no streams, the race falls through to
+    // the normal order.
+    final tvId = widget.metadata.tvId;
+    if (tvId != null) {
+      final sticky = settings.getLastTvProvider(tvId);
+      if (sticky != null) {
+        final stickyIndex =
+            orderedProviders.indexWhere((p) => p.codeName == sticky);
+        if (stickyIndex > 0) {
+          final provider = orderedProviders.removeAt(stickyIndex);
+          orderedProviders.insert(0, provider);
+        }
+      }
+    }
     if (!mounted) return;
     setState(() {
       videoProviders = orderedProviders;

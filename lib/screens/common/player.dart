@@ -2727,6 +2727,13 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
           contentId: _analyticsContentId,
           contentTitle: _analyticsContentTitle,
         );
+        // Remember a manually chosen provider per series, so the next
+        // episode starts here instead of restarting from the top of the
+        // provider order.
+        final tvId = widget.tvMetadata?.tvId;
+        if (widget.mediaType == MediaType.tvShow && tvId != null) {
+          unawaited(settings.setLastTvProvider(tvId, providerCode));
+        }
       }
       settings.analytics.trackProviderAttempt(
         mediaType: _analyticsMediaType,
