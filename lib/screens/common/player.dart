@@ -2661,6 +2661,10 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
               type: BetterPlayerSubtitlesSourceType.network,
               urls: [subtitle.url ?? ''],
               name: subtitle.language ?? tr('not_available'),
+              selectedByDefault: subtitleMatchesPreferredLanguage(
+                subtitle.language,
+                widget.settings.defaultSubtitleLanguage,
+              ),
               headers: subtitle.headers,
             ),
         ];

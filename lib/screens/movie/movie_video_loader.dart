@@ -4,6 +4,7 @@ import 'package:flixquest/services/adsterra_playback_ads_service.dart';
 import 'dart:async';
 import 'package:flixquest/functions/function.dart';
 import 'package:flixquest/functions/network.dart';
+import 'package:flixquest/functions/subtitle_options.dart';
 import 'package:flixquest/functions/video_utils.dart';
 import 'package:flixquest/functions/player_route_handoff.dart';
 import 'package:flixquest/models/movie.dart';
@@ -642,22 +643,17 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
 
   void _addSubtitles(List<RegularSubtitleLinks>? subtitleLinks) {
     if (subtitleLinks == null || subtitleLinks.isEmpty) return;
-    final preferredLang = settings.defaultSubtitleLanguage.toLowerCase();
+    final preferredLang = settings.defaultSubtitleLanguage;
 
     for (final subLink in subtitleLinks) {
       final subLanguage = subLink.language ?? 'Unknown';
-      final normalizedLanguage = subLanguage.toLowerCase();
-      final isPreferred = preferredLang.isNotEmpty &&
-          (normalizedLanguage.startsWith(preferredLang) ||
-              normalizedLanguage == preferredLang ||
-              (preferredLang == 'en' &&
-                  normalizedLanguage.startsWith('english')));
       subs.add(
         BetterPlayerSubtitlesSource(
           type: BetterPlayerSubtitlesSourceType.network,
           urls: [subLink.url ?? ''],
           name: subLanguage,
-          selectedByDefault: isPreferred,
+          selectedByDefault:
+              subtitleMatchesPreferredLanguage(subLanguage, preferredLang),
           headers: subLink.headers,
         ),
       );
