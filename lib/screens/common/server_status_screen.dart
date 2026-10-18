@@ -53,7 +53,7 @@ class _ServerStatusScreenState extends State<ServerStatusScreen> {
           context.read<AppDependencyProvider>().flixquestAPIURLV2;
       final snapshot =
           await ScraperApi(scraperApiUrl).getProviderHealthStatus();
-      // Check direct providers (Castle, NetMirror, MX Player) in parallel —
+      // Check direct providers (Hampi, Nalanda, Dholavira) in parallel —
       // these don't go through the scraper API, so they need their own check.
       final directResults = await _checkDirectProviders();
       final allProviders = [...snapshot.providers, ...directResults];
@@ -78,7 +78,7 @@ class _ServerStatusScreenState extends State<ServerStatusScreen> {
     }
   }
 
-  /// Pings the three direct providers (Castle, NetMirror, MX Player) and
+  /// Pings the three direct providers (Hampi, Nalanda, Dholavira) and
   /// returns a health result for each. Any HTTP response (even 4xx) means
   /// the server is up; only connection failures, timeouts, or 5xx = offline.
   Future<List<ProviderHealthResult>> _checkDirectProviders() async {
