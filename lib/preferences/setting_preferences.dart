@@ -2,6 +2,7 @@
 import 'package:flixquest/constants/app_constants.dart';
 import 'package:flixquest/models/app_mode.dart';
 import 'package:flixquest/models/default_home.dart';
+import 'package:flixquest/video_providers/names.dart';
 
 class SettingsPreferences {
   static const APP_MODE = 'app_mode';
@@ -212,7 +213,10 @@ class SettingsPreferences {
     // were stored as "code-displayName" tokens, while dynamic providers use
     // namespaced stable codes.
     final legacy = sharedPrefsSingleton.getString(_LEGACY_PROVIDER_PRECEDENCE);
-    if (legacy == null || legacy.trim().isEmpty) return const [];
+    if (legacy == null || legacy.trim().isEmpty) {
+      // Fresh install: start everyone on the curated default order.
+      return VideoProvider.defaultOrder;
+    }
 
     final migrated = _uniqueNonEmpty(
       legacy.trim().split(RegExp(r'\s+')).map((entry) {

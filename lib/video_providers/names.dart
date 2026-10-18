@@ -81,6 +81,30 @@ class VideoProvider {
     apiId: 'mxplayer',
   );
 
+  /// Default provider priority for fresh installs: scraper sources first
+  /// (Zeila, Abyssinia, Gura, Karamara), then the direct providers
+  /// (Hampi, Nalanda, Dholavira), then the rest of the scraper catalog.
+  static const defaultOrder = <String>[
+    'scraper:movy', // Zeila
+    'scraper:cinejoy', // Abyssinia
+    'scraper:vidup', // Gura
+    'scraper:aethoflix', // Karamara
+    'direct:castle', // Hampi
+    'direct:netmirror', // Nalanda
+    'direct:mxplayer', // Dholavira
+    'scraper:reelix', // Entoto
+    'scraper:animekai', // Lalibela
+    'scraper:animeyy', // Magdala
+    'scraper:animepahe', // Maychew
+    'scraper:stellar', // Debre Tabor
+    'scraper:viv', // Kaffa
+    'scraper:asiaflix', // Adulis
+    'scraper:aether', // Yeha
+    'scraper:kisskh', // Chelenqo
+    'scraper:yoturkish', // Sebastopol
+    'direct:vixsrc', // VixSrc Direct
+  ];
+
   factory VideoProvider.scraper({
     required String id,
     required String name,
