@@ -43,6 +43,7 @@ class StreamDownloadsBridge(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "getDownloads" -> runResult(result) { downloadMaps() }
+            "getAudioTracks" -> audioTracks(call, result)
             "enqueue" -> enqueue(call, result)
             "pause" -> withId(call, result) { id ->
                 DownloadService.sendSetStopReason(
@@ -190,6 +191,30 @@ class StreamDownloadsBridge(
                             error.message,
                             causeSummary(error),
                         )
+                    },
+                )
+            }
+        }
+    }
+
+    private fun audioTracks(call: MethodCall, result: MethodChannel.Result) {
+        val url = call.argument<String>("url")
+        val format = call.argument<String>("format")
+        if (url.isNullOrBlank() || format.isNullOrBlank()) {
+            result.error("INVALID_ARGUMENTS", "A stream URL and format are required.", null)
+            return
+        }
+        val headers = buildMap<String, String> {
+            (call.argument<Map<*, *>>("headers"))?.forEach { (key, value) ->
+                if (key is String && value is String) put(key, value)
+            }
+        }
+        store.listAudioTracks(url, format, headers) { tracks ->
+            mainHandler.post {
+                tracks.fold(
+                    onSuccess = { result.success(it) },
+                    onFailure = { error ->
+                        result.error("AUDIO_TRACKS_FAILED", error.message, null)
                     },
                 )
             }

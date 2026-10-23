@@ -1129,6 +1129,8 @@
   "download_choose_provider_description": "Pick the source that should provide the offline video.",
   "download_choose_resolution": "Choose resolution",
   "download_resolution_description": "Pick the quality to keep on this device.",
+  "download_choose_audio": "Choose audio language",
+  "download_choose_audio_description": "This video has more than one audio language. Pick the one to save for offline watching.",
   "download_from_provider": "Downloading from {name}",
   "quality_adaptive": "Adaptive quality, chosen by the provider",
   "quality_uhd": "Ultra HD · largest download",

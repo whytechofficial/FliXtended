@@ -84,6 +84,24 @@ class OfflineDownloadService implements OfflineDownloadGateway {
     return _methods.invokeMethod<void>('enqueue', request.toMap());
   }
 
+  /// Lists the audio renditions (dub languages) of a stream manifest.
+  /// Returns an empty list for formats without manifest audio tracks, or when
+  /// the manifest cannot be read — callers then skip the track chooser.
+  Future<List<OfflineAudioTrack>> getAudioTracks({
+    required String url,
+    required String format,
+    Map<String, String> headers = const {},
+  }) async {
+    final raw = await _methods.invokeListMethod<Object?>(
+      'getAudioTracks',
+      {'url': url, 'format': format, 'headers': headers},
+    );
+    return (raw ?? const [])
+        .whereType<Map>()
+        .map((item) => OfflineAudioTrack.fromMap(item.cast<Object?, Object?>()))
+        .toList(growable: false);
+  }
+
   @override
   Future<void> pause(String id) =>
       _methods.invokeMethod<void>('pause', {'id': id});

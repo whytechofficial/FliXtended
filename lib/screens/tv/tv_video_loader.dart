@@ -556,6 +556,25 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
             : url.toLowerCase().contains('.mpd')
                 ? 'dash'
                 : 'hls';
+    final requestHeaders =
+        videoHeaders[quality] ?? VideoUtils.inferVideoHeaders(url) ?? const {};
+    final audioPick = await DownloadSelectionSheets.pickAudioTrack(
+      context,
+      url: url,
+      format: format,
+      headers: requestHeaders,
+    );
+    if (!mounted) return;
+    if (audioPick.cancelled) {
+      settings.analytics.trackDownload(
+        action: 'audio_selection',
+        mediaType: 'tv',
+        outcome: 'cancelled',
+        provider: providerName,
+      );
+      Navigator.pop(context, false);
+      return;
+    }
     final posterPath = widget.metadata.posterPath;
     final season = widget.metadata.seasonNumber ?? 0;
     final episode = widget.metadata.episodeNumber ?? 0;
@@ -577,15 +596,14 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
                   ? null
                   : '${TMDB_BASE_IMAGE_URL}w500$posterPath',
               maxVideoHeight: _qualityHeight(quality),
-              headers: videoHeaders[quality] ??
-                  VideoUtils.inferVideoHeaders(url) ??
-                  const {},
+              headers: requestHeaders,
               contentId: widget.metadata.tvId,
               seasonNumber: season,
               episodeNumber: episode,
               subtitleTrackUrl: subtitleTrack?.url,
               subtitleTrackName: subtitleTrack?.language,
               subtitleTrackHeaders: subtitleTrack?.headers ?? const {},
+              audioTrackLanguage: audioPick.language,
             ),
           );
       settings.analytics.trackDownload(

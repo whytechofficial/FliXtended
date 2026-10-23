@@ -4,9 +4,11 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.TrackSelectionParameters
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -81,12 +83,17 @@ class StreamDownloadStore private constructor(context: Context) {
         val httpFactory = httpFactory(headers)
         val maxVideoHeight = (arguments["maxVideoHeight"] as? Number)?.toInt()
             ?.takeIf { it > 0 }
+        val audioTrackLanguage = (arguments["audioTrackLanguage"] as? String)
+            ?.takeIf { it.isNotBlank() }
 
         val trackParameters = TrackSelectionParameters.Builder(appContext)
             .setForceHighestSupportedBitrate(true)
             .apply {
                 if (maxVideoHeight != null) {
                     setMaxVideoSize(Int.MAX_VALUE, maxVideoHeight)
+                }
+                if (audioTrackLanguage != null) {
+                    setPreferredAudioLanguage(audioTrackLanguage)
                 }
             }
             .build()
@@ -144,6 +151,81 @@ class StreamDownloadStore private constructor(context: Context) {
     }
 
     fun getDownload(id: String): Download? = downloadIndex.getDownload(id)
+
+    /**
+     * Lists the audio renditions of a stream so the user can pick which dub
+     * language to save offline. Uses the same Media3 manifest parsing as the
+     * downloader itself, so the list always matches what can be downloaded.
+     * Each entry carries a "language" selector key (the playlist language tag,
+     * or the rendition label when no tag exists) that [prepareRequest] feeds to
+     * [TrackSelectionParameters.setPreferredAudioLanguage].
+     */
+    fun listAudioTracks(
+        url: String,
+        format: String,
+        headers: Map<String, String>,
+        callback: (Result<List<Map<String, Any?>>>) -> Unit,
+    ) {
+        val mimeType = when (format.lowercase()) {
+            "hls" -> MimeTypes.APPLICATION_M3U8
+            "dash" -> MimeTypes.APPLICATION_MPD
+            else -> {
+                callback(Result.success(emptyList()))
+                return
+            }
+        }
+        val mediaItem = MediaItem.Builder()
+            .setUri(Uri.parse(url))
+            .setMimeType(mimeType)
+            .build()
+        val helper = DownloadHelper.Factory()
+            .setRenderersFactory(DefaultRenderersFactory(appContext))
+            .setDataSourceFactory(httpFactory(headers))
+            .create(mediaItem)
+        helper.prepare(object : DownloadHelper.Callback {
+            override fun onPrepared(helper: DownloadHelper, tracksInfoAvailable: Boolean) {
+                try {
+                    callback(Result.success(collectAudioTracks(helper)))
+                } catch (error: Exception) {
+                    callback(Result.failure(error))
+                } finally {
+                    helper.release()
+                }
+            }
+
+            override fun onPrepareError(helper: DownloadHelper, error: java.io.IOException) {
+                helper.release()
+                callback(Result.failure(error))
+            }
+        })
+    }
+
+    private fun collectAudioTracks(helper: DownloadHelper): List<Map<String, Any?>> {
+        val tracks = mutableListOf<Map<String, Any?>>()
+        for (periodIndex in 0 until helper.periodCount) {
+            val periodTracks: Tracks = helper.getTracks(periodIndex)
+            for (group in periodTracks.groups) {
+                if (group.type != C.TRACK_TYPE_AUDIO) continue
+                for (trackIndex in 0 until group.length) {
+                    val audioFormat = group.getTrackFormat(trackIndex)
+                    val language = audioFormat.language?.takeIf { it.isNotBlank() }
+                    val label = audioFormat.label?.takeIf { it.isNotBlank() }
+                    // Without a language tag or label the track cannot be
+                    // addressed for selection, so it is not listed.
+                    val selectorKey = language ?: label ?: continue
+                    tracks.add(
+                        mapOf(
+                            "language" to selectorKey,
+                            "label" to label,
+                            "rawLanguage" to language,
+                            "trackId" to audioFormat.id,
+                        ),
+                    )
+                }
+            }
+        }
+        return tracks
+    }
 
     fun getDownloads(): List<Download> {
         val result = mutableListOf<Download>()

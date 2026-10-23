@@ -6,6 +6,8 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../design/app_palette.dart';
 import '../../design/app_tokens.dart';
 import '../../mobile/widgets/page_kit.dart';
+import '../../models/offline_download.dart';
+import '../../services/offline_download_service.dart';
 import '../../video_providers/names.dart';
 import 'player/player_sheet_ui.dart';
 
@@ -79,8 +81,62 @@ abstract final class DownloadSelectionSheets {
         : showAppSheet<String>(context, builder: builder);
   }
 
-  static String _resolutionDescription(String resolution) {
-    final height = int.tryParse(
+  /// Audio-track chooser shown before a download when the stream manifest
+  /// lists more than one dub language. Returns null when dismissed.
+  static Future<OfflineAudioTrack?> showAudioTrack(
+    BuildContext context, {
+    required List<OfflineAudioTrack> tracks,
+    bool inPlayer = false,
+  }) {
+    Widget builder(BuildContext context) => _ChoiceSheet<OfflineAudioTrack>(
+          title: tr('download_choose_audio'),
+          subtitle: tr('download_choose_audio_description'),
+          choices: [
+            for (final track in tracks)
+              _Choice(
+                value: track,
+                title: track.displayName,
+                subtitle: '',
+                icon: PhosphorIcons.speakerHigh(),
+              ),
+          ],
+        );
+
+    return inPlayer
+        ? showPlayerSheet<OfflineAudioTrack>(context: context, builder: builder)
+        : showAppSheet<OfflineAudioTrack>(context, builder: builder);
+  }
+
+  /// Checks a stream for multiple audio renditions and, when there is more
+  /// than one, asks the user which dub language to save. Returns
+  /// `cancelled: true` only when the chooser was shown and dismissed; any
+  /// lookup failure or a single track resolves to `language: null` so the
+  /// download proceeds exactly as before.
+  static Future<({bool cancelled, String? language})> pickAudioTrack(
+    BuildContext context, {
+    required String url,
+    required String format,
+    Map<String, String> headers = const {},
+  }) async {
+    List<OfflineAudioTrack> tracks;
+    try {
+      tracks = await OfflineDownloadService.instance.getAudioTracks(
+        url: url,
+        format: format,
+        headers: headers,
+      );
+    } catch (_) {
+      return (cancelled: false, language: null);
+    }
+    if (tracks.length < 2 || !context.mounted) {
+      return (cancelled: false, language: null);
+    }
+    final picked = await showAudioTrack(context, tracks: tracks);
+    if (picked == null) return (cancelled: true, language: null);
+    return (cancelled: false, language: picked.language);
+  }
+
+  static String _resolutionDescription(String resolution) {    final height = int.tryParse(
       RegExp(r'(\d{3,4})').firstMatch(resolution)?.group(1) ?? '',
     );
     if (height == null) return tr('quality_adaptive');
