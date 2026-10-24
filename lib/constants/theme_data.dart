@@ -8,6 +8,7 @@ import 'loading_colors.dart';
 ThemeData darkThemeData(
     bool isM3Enabled, ColorScheme? darkDynamicColor, AppColor color) {
   bool useUserColor = color.index != -1;
+  final brandDefault = AppColor.flixtendedDefault(true);
   return ThemeData(
     useMaterial3: false,
     textTheme: ThemeData.dark().textTheme.apply(fontFamily: 'Figtree'),
@@ -15,10 +16,10 @@ ThemeData darkThemeData(
         BottomSheetThemeData(backgroundColor: Colors.grey.shade900),
     appBarTheme: AppBarTheme(
       backgroundColor: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
       iconTheme: IconThemeData(
         color: isM3Enabled
             ? darkDynamicColor?.onPrimary ?? Colors.black
@@ -37,46 +38,46 @@ ThemeData darkThemeData(
     ),
     dialogTheme: DialogThemeData(backgroundColor: Color(0xFF171717)),
     primaryColor: isM3Enabled
-        ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+        ? darkDynamicColor?.primary ?? brandDefault.primary
         : useUserColor
             ? color.cs.primary
-            : Color(0xFFF57C00),
+            : brandDefault.primary,
     iconTheme: IconThemeData(
       color: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
     ),
     bannerTheme: MaterialBannerThemeData(),
     chipTheme: ChipThemeData(),
     snackBarTheme: SnackBarThemeData(
         backgroundColor: isM3Enabled
-            ? darkDynamicColor?.onSurface ?? Color(0xFFece0da)
+            ? darkDynamicColor?.onSurface ?? brandDefault.onSurface
             : useUserColor
                 ? color.cs.onSurface
-                : Color(0xFFece0da),
+                : brandDefault.onSurface,
         contentTextStyle: TextStyle(
             color: isM3Enabled
-                ? darkDynamicColor?.surface ?? Color(0xFF201a17)
+                ? darkDynamicColor?.surface ?? brandDefault.surface
                 : useUserColor
                     ? color.cs.surface
-                    : Color(0xFF201a17))),
+                    : brandDefault.surface)),
     scaffoldBackgroundColor: Color(0xFF161716),
     radioTheme: RadioThemeData(
         fillColor: WidgetStatePropertyAll(isM3Enabled
-            ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+            ? darkDynamicColor?.primary ?? brandDefault.primary
             : useUserColor
                 ? color.cs.primary
-                : Color(0xFFF57C00))),
+                : brandDefault.primary)),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ButtonStyle(
         backgroundColor: WidgetStatePropertyAll(
           isM3Enabled
-              ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+              ? darkDynamicColor?.primary ?? brandDefault.primary
               : useUserColor
                   ? color.cs.primary
-                  : Color(0xFFF57C00),
+                  : brandDefault.primary,
         ),
         foregroundColor: WidgetStatePropertyAll(
           isM3Enabled
@@ -92,10 +93,10 @@ ThemeData darkThemeData(
           backgroundColor: WidgetStateProperty.all(
             isM3Enabled
                 ? darkDynamicColor?.primary.withValues(alpha: 0.1) ??
-                    Color(0xFFF57C00).withValues(alpha: 0.1)
+                    brandDefault.primary.withValues(alpha: 0.1)
                 : useUserColor
                     ? color.cs.primary.withValues(alpha: 0.1)
-                    : Color(0xFFF57C00).withValues(alpha: 0.1),
+                    : brandDefault.primary.withValues(alpha: 0.1),
           ),
           maximumSize: WidgetStateProperty.all(const Size(200, 60)),
           shape: WidgetStateProperty.all<RoundedRectangleBorder>(
@@ -103,10 +104,10 @@ ThemeData darkThemeData(
                   borderRadius: BorderRadius.circular(5.0),
                   side: BorderSide(
                     color: isM3Enabled
-                        ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+                        ? darkDynamicColor?.primary ?? brandDefault.primary
                         : useUserColor
                             ? color.cs.primary
-                            : Color(0xFFF57C00),
+                            : brandDefault.primary,
                   )))),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -116,17 +117,17 @@ ThemeData darkThemeData(
               ? color.cs.onPrimary
               : Colors.black,
       color: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
     ),
     textSelectionTheme: TextSelectionThemeData(
       cursorColor: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
       selectionHandleColor: const Color(0xFFFFFFFF),
       selectionColor: Colors.white12,
     ),
@@ -144,146 +145,39 @@ ThemeData darkThemeData(
       unselectedLabelStyle:
           const TextStyle(fontFamily: 'FigtreeSB', fontWeight: FontWeight.w500),
       indicatorColor: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStatePropertyAll(
         isM3Enabled
-            ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+            ? darkDynamicColor?.primary ?? brandDefault.primary
             : useUserColor
                 ? color.cs.primary
-                : Color(0xFFF57C00),
+                : brandDefault.primary,
       ),
       trackColor: WidgetStatePropertyAll(
         isM3Enabled
-            ? darkDynamicColor?.primaryContainer ?? Color(0xFF994d02)
+            ? darkDynamicColor?.primaryContainer ?? brandDefault.primaryContainer
             : useUserColor
                 ? color.cs.primaryContainer
-                : Color(0xFF994d02),
+                : brandDefault.primaryContainer,
       ),
     ),
-    colorScheme: ColorScheme(
-      primary: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
-          : useUserColor
-              ? color.cs.primary
-              : Color(0xFFF57C00),
-      primaryContainer: isM3Enabled
-          ? darkDynamicColor?.primaryContainer ?? Color(0xFF723600)
-          : useUserColor
-              ? color.cs.primaryContainer
-              : Color(0xFF723600),
-      secondary: isM3Enabled
-          ? darkDynamicColor?.secondary ?? Color(0xFFe4bfa8)
-          : useUserColor
-              ? color.cs.secondary
-              : Color(0xFFe4bfa8),
-      secondaryContainer: isM3Enabled
-          ? darkDynamicColor?.secondaryContainer ?? Color(0xFF5b4130)
-          : useUserColor
-              ? color.cs.secondaryContainer
-              : Color(0xFF5b4130),
-      surface: isM3Enabled
-          ? darkDynamicColor?.surface ?? Color(0xFF201a17)
-          : useUserColor
-              ? color.cs.surface
-              : Color(0xFF201a17),
-      error: isM3Enabled
-          ? darkDynamicColor?.error ?? Color(0xFFffb4ab)
-          : useUserColor
-              ? color.cs.error
-              : Color(0xFFffb4ab),
-      onPrimary: isM3Enabled
-          ? darkDynamicColor?.onPrimary ?? Color(0xFF502400)
-          : useUserColor
-              ? color.cs.onPrimary
-              : Color(0xFF502400),
-      onSecondary: isM3Enabled
-          ? darkDynamicColor?.onSecondary ?? Color(0xFF422b1b)
-          : useUserColor
-              ? color.cs.onSecondary
-              : Color(0xFF502400),
-      onSurface: isM3Enabled
-          ? darkDynamicColor?.onSurface ?? Color(0xFFece0da)
-          : useUserColor
-              ? color.cs.onSurface
-              : Color(0xFFece0da),
-      onError: isM3Enabled
-          ? darkDynamicColor?.onError ?? Color(0xFF690005)
-          : useUserColor
-              ? color.cs.onError
-              : Color(0xFF690005),
-      errorContainer: isM3Enabled
-          ? darkDynamicColor?.errorContainer ?? Color(0xFF93000a)
-          : useUserColor
-              ? color.cs.errorContainer
-              : Color(0xFF93000a),
-      onErrorContainer: isM3Enabled
-          ? darkDynamicColor?.onErrorContainer ?? Color(0xFFffdad6)
-          : useUserColor
-              ? color.cs.onErrorContainer
-              : Color(0xFFffdad6),
-      onPrimaryContainer: isM3Enabled
-          ? darkDynamicColor?.onPrimaryContainer ?? Color(0xFFffdcc6)
-          : useUserColor
-              ? color.cs.onPrimaryContainer
-              : Color(0xFFffdcc6),
-      onSecondaryContainer: isM3Enabled
-          ? darkDynamicColor?.onSecondaryContainer ?? Color(0xFFffdcc6)
-          : useUserColor
-              ? color.cs.onSecondaryContainer
-              : Color(0xFFffdcc6),
-      onSurfaceVariant: isM3Enabled
-          ? darkDynamicColor?.onSurfaceVariant ?? Color(0xFFd7c3b7)
-          : useUserColor
-              ? color.cs.onSurfaceVariant
-              : Color(0xFFd7c3b7),
-      onTertiary: isM3Enabled
-          ? darkDynamicColor?.onTertiary ?? Color(0xFF31320a)
-          : useUserColor
-              ? color.cs.onTertiary
-              : Color(0xFF31320a),
-      onTertiaryContainer: isM3Enabled
-          ? darkDynamicColor?.onTertiaryContainer ?? Color(0xFFe5e6ae)
-          : useUserColor
-              ? color.cs.onTertiaryContainer
-              : Color(0xFFe5e6ae),
-      outline: isM3Enabled
-          ? darkDynamicColor?.outline ?? Color(0xFF9f8d83)
-          : useUserColor
-              ? color.cs.outline
-              : Color(0xFF9f8d83),
-      tertiary: isM3Enabled
-          ? darkDynamicColor?.tertiary ?? Color(0xFFc9ca94)
-          : useUserColor
-              ? color.cs.tertiary
-              : Color(0xFFc9ca94),
-      tertiaryContainer: isM3Enabled
-          ? darkDynamicColor?.tertiaryContainer ?? Color(0xFF48491f)
-          : useUserColor
-              ? color.cs.tertiaryContainer
-              : Color(0xFF48491f),
-      surfaceContainerHighest: isM3Enabled
-          ? darkDynamicColor?.surfaceContainerHighest ?? Color(0xFF52443c)
-          : useUserColor
-              ? color.cs.surfaceContainerHighest
-              : Color(0xFF52443c),
-      brightness: Brightness.dark,
-    ).copyWith(
-        surface: isM3Enabled
-            ? darkDynamicColor?.surface ?? Color(0xFF201a17)
-            : useUserColor
-                ? color.cs.surface
-                : Color(0xFF201a17)),
+    colorScheme: isM3Enabled
+        ? (darkDynamicColor ?? brandDefault)
+        : useUserColor
+            ? color.cs
+            : brandDefault,
   );
 }
 
 ThemeData lightThemeData(
     bool isM3Enabled, ColorScheme? lightDynamicColor, AppColor color) {
   bool useUserColor = color.index != -1;
+  final brandDefault = AppColor.flixtendedDefault(false);
   return ThemeData(
     useMaterial3: false,
     textTheme: ThemeData.light().textTheme.apply(fontFamily: 'Figtree'),
@@ -291,10 +185,10 @@ ThemeData lightThemeData(
         BottomSheetThemeData(backgroundColor: Colors.grey.shade400),
     appBarTheme: AppBarTheme(
       backgroundColor: isM3Enabled
-          ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? lightDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
       iconTheme: IconThemeData(
         color: isM3Enabled
             ? lightDynamicColor?.onPrimary ?? Colors.black
@@ -313,46 +207,46 @@ ThemeData lightThemeData(
     ),
     dialogTheme: DialogThemeData(backgroundColor: Color(0xFFdedede)),
     primaryColor: isM3Enabled
-        ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+        ? lightDynamicColor?.primary ?? brandDefault.primary
         : useUserColor
             ? color.cs.primary
-            : const Color(0xFFF57C00),
+            : brandDefault.primary,
     iconTheme: IconThemeData(
       color: isM3Enabled
-          ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? lightDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
     ),
     bannerTheme: MaterialBannerThemeData(),
     chipTheme: ChipThemeData(),
     snackBarTheme: SnackBarThemeData(
         backgroundColor: isM3Enabled
-            ? lightDynamicColor?.onSurface ?? Color(0xFF201a17)
+            ? lightDynamicColor?.onSurface ?? brandDefault.onSurface
             : useUserColor
                 ? color.cs.onSurface
-                : Color(0xFF201a17),
+                : brandDefault.onSurface,
         contentTextStyle: TextStyle(
             color: isM3Enabled
-                ? lightDynamicColor?.surface ?? Color(0xFFfffbff)
+                ? lightDynamicColor?.surface ?? brandDefault.surface
                 : useUserColor
                     ? color.cs.surface
-                    : Color(0xFFfffbff))),
+                    : brandDefault.surface)),
     scaffoldBackgroundColor: Color(0xFFf5f5f5),
     radioTheme: RadioThemeData(
         fillColor: WidgetStatePropertyAll(isM3Enabled
-            ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+            ? lightDynamicColor?.primary ?? brandDefault.primary
             : useUserColor
                 ? color.cs.primary
-                : Color(0xFFF57C00))),
+                : brandDefault.primary)),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ButtonStyle(
         backgroundColor: WidgetStatePropertyAll(
           isM3Enabled
-              ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+              ? lightDynamicColor?.primary ?? brandDefault.primary
               : useUserColor
                   ? color.cs.primary
-                  : Color(0xFFF57C00),
+                  : brandDefault.primary,
         ),
         foregroundColor: WidgetStatePropertyAll(
           isM3Enabled
@@ -368,10 +262,10 @@ ThemeData lightThemeData(
           backgroundColor: WidgetStateProperty.all(
             isM3Enabled
                 ? lightDynamicColor?.primary.withValues(alpha: 0.1) ??
-                    Color(0xFFF57C00).withValues(alpha: 0.1)
+                    brandDefault.primary.withValues(alpha: 0.1)
                 : useUserColor
                     ? color.cs.primary.withValues(alpha: 0.1)
-                    : Color(0xFFF57C00).withValues(alpha: 0.1),
+                    : brandDefault.primary.withValues(alpha: 0.1),
           ),
           maximumSize: WidgetStateProperty.all(const Size(200, 60)),
           shape: WidgetStateProperty.all<RoundedRectangleBorder>(
@@ -379,10 +273,10 @@ ThemeData lightThemeData(
                   borderRadius: BorderRadius.circular(5.0),
                   side: BorderSide(
                     color: isM3Enabled
-                        ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+                        ? lightDynamicColor?.primary ?? brandDefault.primary
                         : useUserColor
                             ? color.cs.primary
-                            : Color(0xFFF57C00),
+                            : brandDefault.primary,
                   )))),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -392,17 +286,17 @@ ThemeData lightThemeData(
               ? color.cs.onPrimary
               : Colors.black,
       color: isM3Enabled
-          ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? lightDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
     ),
     textSelectionTheme: TextSelectionThemeData(
       cursorColor: isM3Enabled
-          ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? lightDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
       selectionHandleColor: const Color(0xFF000000),
       selectionColor: Colors.black12,
     ),
@@ -420,145 +314,38 @@ ThemeData lightThemeData(
         unselectedLabelStyle: const TextStyle(
             fontFamily: 'FigtreeSB', fontWeight: FontWeight.w500),
         indicatorColor: isM3Enabled
-            ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+            ? lightDynamicColor?.primary ?? brandDefault.primary
             : useUserColor
                 ? color.cs.primary
-                : Color(0xFFF57C00)),
+                : brandDefault.primary),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStatePropertyAll(
         isM3Enabled
-            ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
+            ? lightDynamicColor?.primary ?? brandDefault.primary
             : useUserColor
                 ? color.cs.primary
-                : Color(0xFFF57C00),
+                : brandDefault.primary,
       ),
       trackColor: WidgetStatePropertyAll(
         isM3Enabled
-            ? lightDynamicColor?.primaryContainer ?? Color(0xFF994d02)
+            ? lightDynamicColor?.primaryContainer ?? brandDefault.primaryContainer
             : useUserColor
                 ? color.cs.primaryContainer
-                : Color(0xFF994d02),
+                : brandDefault.primaryContainer,
       ),
     ),
-    colorScheme: ColorScheme(
-      primary: isM3Enabled
-          ? lightDynamicColor?.primary ?? Color(0xFFF57C00)
-          : useUserColor
-              ? color.cs.primary
-              : const Color(0xFFF57C00),
-      primaryContainer: isM3Enabled
-          ? lightDynamicColor?.primaryContainer ?? Color(0xFFffdcc6)
-          : useUserColor
-              ? color.cs.primaryContainer
-              : Color(0xFFffdcc6),
-      secondary: isM3Enabled
-          ? lightDynamicColor?.secondary ?? Color(0xFF755846)
-          : useUserColor
-              ? color.cs.secondary
-              : Color(0xFF755846),
-      secondaryContainer: isM3Enabled
-          ? lightDynamicColor?.secondaryContainer ?? Color(0xFFffdcc6)
-          : useUserColor
-              ? color.cs.secondaryContainer
-              : Color(0xFFffdcc6),
-      surface: isM3Enabled
-          ? lightDynamicColor?.surface ?? Color(0xFFfffbff)
-          : useUserColor
-              ? color.cs.surface
-              : Color(0xFFfffbff),
-      error: isM3Enabled
-          ? lightDynamicColor?.error ?? Color(0xFFba1a1a)
-          : useUserColor
-              ? color.cs.error
-              : Color(0xFFba1a1a),
-      onPrimary: isM3Enabled
-          ? lightDynamicColor?.onPrimary ?? Color(0xFFFFC890)
-          : useUserColor
-              ? color.cs.onPrimary
-              : Color(0xFFFFC890),
-      onSecondary: isM3Enabled
-          ? lightDynamicColor?.onSecondary ?? Color(0xFFffffff)
-          : useUserColor
-              ? color.cs.onSecondary
-              : Color(0xFFffffff),
-      onSurface: isM3Enabled
-          ? lightDynamicColor?.onSurface ?? Color(0xFF201a17)
-          : useUserColor
-              ? color.cs.onSurface
-              : Color(0xFF201a17),
-      onError: isM3Enabled
-          ? lightDynamicColor?.onError ?? Color(0xFFffffff)
-          : useUserColor
-              ? color.cs.onError
-              : Color(0xFFffffff),
-      errorContainer: isM3Enabled
-          ? lightDynamicColor?.errorContainer ?? Color(0xFFffdad6)
-          : useUserColor
-              ? color.cs.errorContainer
-              : Color(0xFFffdad6),
-      onErrorContainer: isM3Enabled
-          ? lightDynamicColor?.onErrorContainer ?? Color(0xFF410002)
-          : useUserColor
-              ? color.cs.onErrorContainer
-              : Color(0xFF410002),
-      onPrimaryContainer: isM3Enabled
-          ? lightDynamicColor?.onPrimaryContainer ?? Color(0xFF311400)
-          : useUserColor
-              ? color.cs.onPrimaryContainer
-              : Color(0xFF311400),
-      onSecondaryContainer: isM3Enabled
-          ? lightDynamicColor?.onSecondaryContainer ?? Color(0xFF2b1708)
-          : useUserColor
-              ? color.cs.onSecondaryContainer
-              : Color(0xFF2b1708),
-      onSurfaceVariant: isM3Enabled
-          ? lightDynamicColor?.onSurfaceVariant ?? Color(0xFF52443c)
-          : useUserColor
-              ? color.cs.onSurfaceVariant
-              : Color(0xFF52443c),
-      onTertiary: isM3Enabled
-          ? lightDynamicColor?.onTertiary ?? Color(0xFFffffff)
-          : useUserColor
-              ? color.cs.onTertiary
-              : Color(0xFFffffff),
-      onTertiaryContainer: isM3Enabled
-          ? lightDynamicColor?.onTertiaryContainer ?? Color(0xFF1c1d00)
-          : useUserColor
-              ? color.cs.onTertiaryContainer
-              : Color(0xFF1c1d00),
-      outline: isM3Enabled
-          ? lightDynamicColor?.outline ?? Color(0xFF84746a)
-          : useUserColor
-              ? color.cs.outline
-              : Color(0xFF84746a),
-      tertiary: isM3Enabled
-          ? lightDynamicColor?.tertiary ?? Color(0xFF5f6134)
-          : useUserColor
-              ? color.cs.tertiary
-              : Color(0xFF5f6134),
-      tertiaryContainer: isM3Enabled
-          ? lightDynamicColor?.tertiaryContainer ?? Color(0xFFe5e6ae)
-          : useUserColor
-              ? color.cs.tertiaryContainer
-              : Color(0xFFe5e6ae),
-      surfaceContainerHighest: isM3Enabled
-          ? lightDynamicColor?.surfaceContainerHighest ?? Color(0xFFf4ded3)
-          : useUserColor
-              ? color.cs.surfaceContainerHighest
-              : Color(0xFFf4ded3),
-      brightness: Brightness.light,
-    ).copyWith(
-        surface: isM3Enabled
-            ? lightDynamicColor?.surface ?? Color(0xFFfffbff)
-            : useUserColor
-                ? color.cs.surface
-                : Color(0xFFfffbff)),
+    colorScheme: isM3Enabled
+        ? (lightDynamicColor ?? brandDefault)
+        : useUserColor
+            ? color.cs
+            : brandDefault,
   );
 }
 
 ThemeData lightsOutThemeData(
     bool isM3Enabled, ColorScheme? darkDynamicColor, AppColor color) {
   bool useUserColor = color.index != -1;
+  final brandDefault = AppColor.flixtendedDefault(true);
   return ThemeData(
     useMaterial3: false,
     textTheme: ThemeData.dark().textTheme.apply(fontFamily: 'Figtree'),
@@ -566,10 +353,10 @@ ThemeData lightsOutThemeData(
         BottomSheetThemeData(backgroundColor: Colors.grey.shade900),
     appBarTheme: AppBarTheme(
       backgroundColor: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
       iconTheme: IconThemeData(
         color: isM3Enabled
             ? darkDynamicColor?.onPrimary ?? Colors.black
@@ -594,47 +381,47 @@ ThemeData lightsOutThemeData(
     ),
     dialogTheme: DialogThemeData(backgroundColor: Color(0xFF171717)),
     primaryColor: isM3Enabled
-        ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+        ? darkDynamicColor?.primary ?? brandDefault.primary
         : useUserColor
             ? color.cs.primary
-            : const Color(0xFFF57C00),
+            : brandDefault.primary,
     iconTheme: IconThemeData(
       color: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
     ),
     bannerTheme: MaterialBannerThemeData(),
     chipTheme: ChipThemeData(),
     snackBarTheme: SnackBarThemeData(
         backgroundColor: isM3Enabled
-            ? darkDynamicColor?.onSurface ?? Color(0xFFece0da)
+            ? darkDynamicColor?.onSurface ?? brandDefault.onSurface
             : useUserColor
                 ? color.cs.onSurface
-                : Color(0xFFece0da),
+                : brandDefault.onSurface,
         contentTextStyle: TextStyle(
           color: isM3Enabled
-              ? darkDynamicColor?.surface ?? Color(0xFF201a17)
+              ? darkDynamicColor?.surface ?? brandDefault.surface
               : useUserColor
                   ? color.cs.surface
-                  : Color(0xFF201a17),
+                  : brandDefault.surface,
         )),
     scaffoldBackgroundColor: Colors.black,
     radioTheme: RadioThemeData(
         fillColor: WidgetStatePropertyAll(isM3Enabled
-            ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+            ? darkDynamicColor?.primary ?? brandDefault.primary
             : useUserColor
                 ? color.cs.primary
-                : Color(0xFFF57C00))),
+                : brandDefault.primary)),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ButtonStyle(
         backgroundColor: WidgetStatePropertyAll(
           isM3Enabled
-              ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+              ? darkDynamicColor?.primary ?? brandDefault.primary
               : useUserColor
                   ? color.cs.primary
-                  : Color(0xFFF57C00),
+                  : brandDefault.primary,
         ),
         foregroundColor: WidgetStatePropertyAll(
           isM3Enabled
@@ -650,10 +437,10 @@ ThemeData lightsOutThemeData(
           backgroundColor: WidgetStateProperty.all(
             isM3Enabled
                 ? darkDynamicColor?.primary.withValues(alpha: 0.1) ??
-                    Color(0xFFF57C00).withValues(alpha: 0.1)
+                    brandDefault.primary.withValues(alpha: 0.1)
                 : useUserColor
                     ? color.cs.primary.withValues(alpha: 0.1)
-                    : Color(0xFFF57C00).withValues(alpha: 0.1),
+                    : brandDefault.primary.withValues(alpha: 0.1),
           ),
           maximumSize: WidgetStateProperty.all(const Size(200, 60)),
           shape: WidgetStateProperty.all<RoundedRectangleBorder>(
@@ -661,10 +448,10 @@ ThemeData lightsOutThemeData(
                   borderRadius: BorderRadius.circular(5.0),
                   side: BorderSide(
                     color: isM3Enabled
-                        ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+                        ? darkDynamicColor?.primary ?? brandDefault.primary
                         : useUserColor
                             ? color.cs.primary
-                            : Color(0xFFF57C00),
+                            : brandDefault.primary,
                   )))),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -672,17 +459,17 @@ ThemeData lightsOutThemeData(
           ? darkDynamicColor?.onPrimary ?? Colors.black
           : Colors.black,
       color: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
     ),
     textSelectionTheme: TextSelectionThemeData(
       cursorColor: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
       selectionHandleColor: const Color(0xFFFFFFFF),
       selectionColor: Colors.white12,
     ),
@@ -700,140 +487,32 @@ ThemeData lightsOutThemeData(
       unselectedLabelStyle:
           const TextStyle(fontFamily: 'FigtreeSB', fontWeight: FontWeight.w500),
       indicatorColor: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+          ? darkDynamicColor?.primary ?? brandDefault.primary
           : useUserColor
               ? color.cs.primary
-              : Color(0xFFF57C00),
+              : brandDefault.primary,
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStatePropertyAll(
         isM3Enabled
-            ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
+            ? darkDynamicColor?.primary ?? brandDefault.primary
             : useUserColor
                 ? color.cs.primary
-                : Color(0xFFF57C00),
+                : brandDefault.primary,
       ),
       trackColor: WidgetStatePropertyAll(
         isM3Enabled
-            ? darkDynamicColor?.primaryContainer ?? Color(0xFF994d02)
+            ? darkDynamicColor?.primaryContainer ?? brandDefault.primaryContainer
             : useUserColor
                 ? color.cs.primaryContainer
-                : Color(0xFF994d02),
+                : brandDefault.primaryContainer,
       ),
     ),
-    colorScheme: ColorScheme(
-      primary: isM3Enabled
-          ? darkDynamicColor?.primary ?? Color(0xFFF57C00)
-          : useUserColor
-              ? color.cs.primary
-              : const Color(0xFFF57C00),
-      primaryContainer: isM3Enabled
-          ? darkDynamicColor?.primaryContainer ?? Color(0xFF723600)
-          : useUserColor
-              ? color.cs.primaryContainer
-              : Color(0xFF723600),
-      secondary: isM3Enabled
-          ? darkDynamicColor?.secondary ?? Color(0xFFe4bfa8)
-          : useUserColor
-              ? color.cs.secondary
-              : Color(0xFFe4bfa8),
-      secondaryContainer: isM3Enabled
-          ? darkDynamicColor?.secondaryContainer ?? Color(0xFF5b4130)
-          : useUserColor
-              ? color.cs.secondaryContainer
-              : Color(0xFF5b4130),
-      surface: isM3Enabled
-          ? darkDynamicColor?.surface ?? Color(0xFF201a17)
-          : useUserColor
-              ? color.cs.surface
-              : Colors.black,
-      error: isM3Enabled
-          ? darkDynamicColor?.error ?? Color(0xFFffb4ab)
-          : useUserColor
-              ? color.cs.error
-              : Color(0xFFffb4ab),
-      onPrimary: isM3Enabled
-          ? darkDynamicColor?.onPrimary ?? Color(0xFF502400)
-          : useUserColor
-              ? color.cs.onPrimary
-              : Color(0xFF502400),
-      onSecondary: isM3Enabled
-          ? darkDynamicColor?.onSecondary ?? Color(0xFF422b1b)
-          : useUserColor
-              ? color.cs.onSecondary
-              : Color(0xFF502400),
-      onSurface: isM3Enabled
-          ? darkDynamicColor?.onSurface ?? Color(0xFFece0da)
-          : useUserColor
-              ? color.cs.onSurface
-              : Color(0xFFece0da),
-      onError: isM3Enabled
-          ? darkDynamicColor?.onError ?? Color(0xFF690005)
-          : useUserColor
-              ? color.cs.onError
-              : Color(0xFF690005),
-      errorContainer: isM3Enabled
-          ? darkDynamicColor?.errorContainer ?? Color(0xFF93000a)
-          : useUserColor
-              ? color.cs.errorContainer
-              : Color(0xFF93000a),
-      onErrorContainer: isM3Enabled
-          ? darkDynamicColor?.onErrorContainer ?? Color(0xFFffdad6)
-          : useUserColor
-              ? color.cs.onErrorContainer
-              : Color(0xFFffdad6),
-      onPrimaryContainer: isM3Enabled
-          ? darkDynamicColor?.onPrimaryContainer ?? Color(0xFFffdcc6)
-          : useUserColor
-              ? color.cs.onPrimaryContainer
-              : Color(0xFFffdcc6),
-      onSecondaryContainer: isM3Enabled
-          ? darkDynamicColor?.onSecondaryContainer ?? Color(0xFFffdcc6)
-          : useUserColor
-              ? color.cs.onSecondaryContainer
-              : Color(0xFFffdcc6),
-      onSurfaceVariant: isM3Enabled
-          ? darkDynamicColor?.onSurfaceVariant ?? Color(0xFFd7c3b7)
-          : useUserColor
-              ? color.cs.onSurfaceVariant
-              : Color(0xFFd7c3b7),
-      onTertiary: isM3Enabled
-          ? darkDynamicColor?.onTertiary ?? Color(0xFF31320a)
-          : useUserColor
-              ? color.cs.onTertiary
-              : Color(0xFF31320a),
-      onTertiaryContainer: isM3Enabled
-          ? darkDynamicColor?.onTertiaryContainer ?? Color(0xFFe5e6ae)
-          : useUserColor
-              ? color.cs.onTertiaryContainer
-              : Color(0xFFe5e6ae),
-      outline: isM3Enabled
-          ? darkDynamicColor?.outline ?? Color(0xFF9f8d83)
-          : useUserColor
-              ? color.cs.outline
-              : Color(0xFF9f8d83),
-      tertiary: isM3Enabled
-          ? darkDynamicColor?.tertiary ?? Color(0xFFc9ca94)
-          : useUserColor
-              ? color.cs.tertiary
-              : Color(0xFFc9ca94),
-      tertiaryContainer: isM3Enabled
-          ? darkDynamicColor?.tertiaryContainer ?? Color(0xFF48491f)
-          : useUserColor
-              ? color.cs.tertiaryContainer
-              : Color(0xFF48491f),
-      surfaceContainerHighest: isM3Enabled
-          ? darkDynamicColor?.surfaceContainerHighest ?? Color(0xFF52443c)
-          : useUserColor
-              ? color.cs.surfaceContainerHighest
-              : Color(0xFF52443c),
-      brightness: Brightness.dark,
-    ).copyWith(
-        surface: isM3Enabled
-            ? darkDynamicColor?.surface ?? Color(0xFF201a17)
-            : useUserColor
-                ? color.cs.surface
-                : Color(0xFF201a17)),
+    colorScheme: isM3Enabled
+        ? (darkDynamicColor ?? brandDefault)
+        : useUserColor
+            ? color.cs
+            : brandDefault,
   );
 }
 
@@ -1167,28 +846,31 @@ ThemeData _applyFlixQuestUI(
       selectedBorderColor: ink,
       borderRadius: BorderRadius.circular(corner(7, 12)),
     ),
-    // Selected chips fill with ink and invert their label; the rest sit on a
-    // faint ink wash with no outline.
+    // Selected chips fill with the brand accent (lavender) and invert their
+    // label; the rest sit on a faint ink wash with no outline.
     chipTheme: base.chipTheme.copyWith(
       color: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
           return ink.withValues(alpha: .04);
         }
         return states.contains(WidgetState.selected)
-            ? ink
+            ? colors.primary
             : ink.withValues(alpha: .08);
       }),
       backgroundColor: ink.withValues(alpha: .08),
-      selectedColor: ink,
-      secondarySelectedColor: ink,
-      checkmarkColor: onInk,
+      selectedColor: colors.primary,
+      secondarySelectedColor: colors.primary,
+      checkmarkColor: colors.onPrimary,
       labelStyle: WidgetStateTextStyle.resolveWith(
         (states) => TextStyle(
-          color: states.contains(WidgetState.selected) ? onInk : ink,
+          color: states.contains(WidgetState.selected)
+              ? colors.onPrimary
+              : ink,
           fontFamily: 'FigtreeSB',
         ),
       ),
-      secondaryLabelStyle: TextStyle(color: onInk, fontFamily: 'FigtreeSB'),
+      secondaryLabelStyle:
+          TextStyle(color: colors.onPrimary, fontFamily: 'FigtreeSB'),
       side: BorderSide.none,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       shape: RoundedRectangleBorder(
@@ -1234,12 +916,12 @@ ThemeData _applyFlixQuestUI(
       indicatorColor: Colors.transparent,
       iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             color: states.contains(WidgetState.selected)
-                ? ink
+                ? colors.primary
                 : colors.onSurfaceVariant,
           )),
       labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
             color: states.contains(WidgetState.selected)
-                ? ink
+                ? colors.primary
                 : colors.onSurfaceVariant,
             fontFamily:
                 states.contains(WidgetState.selected) ? 'FigtreeSB' : 'Figtree',
@@ -1259,9 +941,9 @@ ThemeData _applyFlixQuestUI(
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: surface,
-      selectedItemColor: ink,
+      selectedItemColor: colors.primary,
       unselectedItemColor: colors.onSurfaceVariant,
-      selectedIconTheme: IconThemeData(color: ink),
+      selectedIconTheme: IconThemeData(color: colors.primary),
       unselectedIconTheme: IconThemeData(color: colors.onSurfaceVariant),
       selectedLabelStyle: const TextStyle(fontFamily: 'FigtreeSB'),
       unselectedLabelStyle: const TextStyle(fontFamily: 'Figtree'),
@@ -1282,8 +964,8 @@ ThemeData _applyFlixQuestUI(
       ),
     ),
     badgeTheme: BadgeThemeData(
-      backgroundColor: colors.primary,
-      textColor: solidButtonForeground,
+      backgroundColor: colors.secondary,
+      textColor: colors.onSecondary,
     ),
     expansionTileTheme: ExpansionTileThemeData(
       iconColor: ink,
