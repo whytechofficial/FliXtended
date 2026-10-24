@@ -22,7 +22,6 @@ import '../../provider/app_dependency_provider.dart';
 import '../../provider/settings_provider.dart';
 import '../../provider/wellness_provider.dart';
 import '../../services/adsterra_playback_ads_service.dart';
-import '../../widgets/ad_block_playback_guard.dart';
 import '../../services/analytics_service.dart';
 import '../../services/daddylive_service.dart';
 import '../../services/stream_intro_service.dart';
@@ -120,7 +119,6 @@ class _LivePlayerState extends State<LivePlayer> {
   final _automaticStreamReport = AutomaticStreamReport();
   final _feedbackConnection = StreamFeedbackConnection();
   bool _exitingPlayer = false;
-  bool _adBlockStopped = false;
   int _feedbackChannelSwitches = 0;
   String? _initialFeedbackChannel;
   String? _currentChannelId;
@@ -265,7 +263,7 @@ class _LivePlayerState extends State<LivePlayer> {
   }
 
   void _checkPlaybackProgress() {
-    if (!mounted || _adBlockStopped) return;
+    if (!mounted) return;
     if (!widget.useTvControls) {
       AdsterraPlaybackAdsService.instance.notePlayerWatch(
           context, Duration(milliseconds: _wellnessTracker.watchedMs()));
@@ -495,9 +493,7 @@ class _LivePlayerState extends State<LivePlayer> {
   }
 
   void _updateDiscoveredVariants(LiveStreamDiscovery discovery) {
-    if (!mounted ||
-        _adBlockStopped ||
-        !identical(_streamDiscovery, discovery)) {
+    if (!mounted || !identical(_streamDiscovery, discovery)) {
       return;
     }
     setState(() => _streamVariants = discovery.variants);
@@ -812,7 +808,7 @@ class _LivePlayerState extends State<LivePlayer> {
   }
 
   bool _isActiveSourceOperation(int generation) =>
-      mounted && !_adBlockStopped && generation == _sourceOperationGeneration;
+      mounted && generation == _sourceOperationGeneration;
 
   Future<bool> _setupDataSourceForOperation(
     int operation,
@@ -900,7 +896,6 @@ class _LivePlayerState extends State<LivePlayer> {
   }
 
   void _onPlayerEvent(BetterPlayerEvent event) {
-    if (_adBlockStopped) return;
     if (_betterPlayerController.isPreRollActive ||
         event.betterPlayerEventType == BetterPlayerEventType.preRollEnded ||
         _isRelevantPlayerEvent(event)) {
@@ -1369,26 +1364,8 @@ class _LivePlayerState extends State<LivePlayer> {
     super.dispose();
   }
 
-  void _stopForAdBlocker() {
-    if (_adBlockStopped) return;
-    _adBlockStopped = true;
-    _adoptStreamDiscovery(null);
-    _exitingPlayer = true;
-    _sourceOperationGeneration++;
-    _watchdogTimer?.cancel();
-    _cancelPlaybackRecovery();
-    _prerollAd.dispose();
-    _betterPlayerController.dispose(forceDispose: true);
-  }
-
   @override
-  Widget build(BuildContext context) => AdBlockPlaybackGuard(
-        stopPlayback: _stopForAdBlocker,
-        television: widget.useTvControls,
-        child: _buildPlayback(context),
-      );
-
-  Widget _buildPlayback(BuildContext context) {
+  Widget build(BuildContext context) {
     _handleScreenOrientation(context);
     if (_isPortraitInlineLayout(context)) {
       return PopScope(

@@ -303,7 +303,6 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
             videoHeaders: videoHeaders,
             videoSizeTokens: videoSizeTokens,
             providerName: selection?.provider.displayName,
-            downloadProvider: selection?.provider,
           );
           return;
         }
@@ -508,7 +507,6 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
     required Map<String, Map<String, String>> videoHeaders,
     required Map<String, String> videoSizeTokens,
     String? providerName,
-    VideoProvider? downloadProvider,
   }) async {
     final estimatedSizes = ValueNotifier<Map<String, int?>>({
       for (final entry in videoSizeTokens.entries)
@@ -593,12 +591,6 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
               maxVideoHeight: _qualityHeight(quality),
               headers: downloadHeaders,
               audioTrack: audioSelection.track,
-              source: OfflineDownloadSource.forSelection(
-                provider: downloadProvider,
-                apiBaseUrl: _scraperApiUrl,
-                links: movieVideoLinks ?? const [],
-                url: url,
-              ),
               contentId: _metadata.movieId,
               subtitleTrackUrl: subtitleTrack?.url,
               subtitleTrackName: subtitleTrack?.language,
@@ -638,7 +630,10 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
     }
   }
 
-  int? _qualityHeight(String quality) => VideoUtils.videoQualityHeight(quality);
+  int? _qualityHeight(String quality) {
+    final match = RegExp(r'(\d{3,4})').firstMatch(quality);
+    return int.tryParse(match?.group(1) ?? '');
+  }
 
   RegularSubtitleLinks? _preferredSubtitle(
     List<RegularSubtitleLinks>? subtitles,

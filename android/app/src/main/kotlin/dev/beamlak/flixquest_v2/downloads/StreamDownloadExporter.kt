@@ -80,7 +80,7 @@ class StreamDownloadExporter(
      */
     private fun startTransformer(download: Download, output: File, inAppMuxer: Boolean) {
         val downloadId = download.request.id
-        val mediaSourceFactory = DefaultMediaSourceFactory(store.readOnlyCacheFactory(download.request))
+        val mediaSourceFactory = DefaultMediaSourceFactory(store.readOnlyCacheFactory())
         val assetLoaderFactory = DefaultAssetLoaderFactory(
             appContext,
             DefaultDecoderFactory.Builder(appContext).build(),

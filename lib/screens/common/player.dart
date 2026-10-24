@@ -62,7 +62,6 @@ import '../../services/stream_feedback_session.dart';
 import '../../services/stream_feedback_service.dart';
 import '../../services/automatic_stream_report.dart';
 import '../../services/streaming_dnd_service.dart';
-import '../../widgets/ad_block_playback_guard.dart';
 import '../../design/app_tokens.dart';
 import 'player/player_watch_page.dart';
 import 'player/player_strings.dart';
@@ -141,7 +140,6 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
   final _automaticStreamReport = AutomaticStreamReport();
   final _feedbackConnection = StreamFeedbackConnection();
   bool _exitingPlayer = false;
-  bool _adBlockStopped = false;
   String _automaticReportEndReason = 'route_disposed';
   int _feedbackSourceSwitches = 0;
 
@@ -465,7 +463,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                 ),
               ]
             // Subtitle timing, searching online and uploading live in the
-            // Subtitles panel.
+            // Audio & Subtitles panel.
             : [
                 BetterPlayerOverflowMenuItem(
                   PhosphorIcons.arrowSquareOut(),
@@ -577,7 +575,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       // The ad request runs alongside the intro lookup; neither waits on the
       // other, and a missing ad never delays the content.
       final adFuture = _prerollAd.load(_appDependencies.vastPreroll,
-          cancelled: () => !mounted || _adBlockStopped);
+          cancelled: () => !mounted);
       StreamIntroConfig intro = const StreamIntroConfig.disabled();
       try {
         intro = await _introService.fetch(_resolveScraperApiUrl());
@@ -585,7 +583,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         debugPrint('[Player] Branded intro unavailable: $error');
       }
       final prerollAd = await adFuture;
-      if (!mounted || _adBlockStopped) return;
+      if (!mounted) return;
 
       if (prerollAd != null) {
         // The ad replaces the branded intro for this session: one pre-roll
@@ -611,7 +609,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
           initialPosition: initialPosition,
         );
       }
-      if (!mounted || _adBlockStopped) return;
+      if (!mounted) return;
       _applyPreferredAdaptiveQuality();
       duration = _betterPlayerController
               .videoPlayerController?.value.duration?.inSeconds ??
@@ -622,7 +620,6 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       );
       if (!_preRollActive) unawaited(_loadIntroDbTimings());
     } catch (error) {
-      if (_adBlockStopped) return;
       _preRollActive = false;
       _prerollAd.finish('error');
       _feedbackSession.recordFailure();
@@ -671,7 +668,6 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       DateTime.now().difference(_analyticsSessionStartedAt).inMilliseconds;
 
   void _onAnalyticsPlayerEvent(BetterPlayerEvent event) {
-    if (_adBlockStopped) return;
     final feedbackValue = _betterPlayerController.videoPlayerController?.value;
     _feedbackSession.onEvent(
       event,
@@ -1972,22 +1968,6 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  void _stopForAdBlocker() {
-    if (_adBlockStopped) return;
-    if (_isVideoInitializedSafely()) _saveRecentProgress();
-    _adBlockStopped = true;
-    _exitingPlayer = true;
-    _automaticReportEndReason = 'ad_blocked';
-    _durationTimer?.cancel();
-    _progressCheckTimer?.cancel();
-    _phoneNextEpisodeTimer?.cancel();
-    _tvNextEpisodeTimer?.cancel();
-    _hideNextEpisodeOverlay();
-    _prerollAd.dispose();
-    // Force native teardown now, before any route transition or message.
-    _betterPlayerController.dispose(forceDispose: true);
-  }
-
   void _handleVideoFinished() {
     if (widget.mediaType == MediaType.tvShow) {
       _restoreEpisodeSnapshotIfNeeded('video_finished');
@@ -2438,7 +2418,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
   }
 
   Future<void> _startContent(Future<void> Function() action) async {
-    if (_startingContent || !mounted || _adBlockStopped) return;
+    if (_startingContent || !mounted) return;
     setState(() => _startingContent = true);
     _nextEpisodeOverlay?.markNeedsBuild();
     // Fullscreen controls live on a separate route. Show feedback above that
@@ -2668,8 +2648,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     bool reload = false,
     Duration? resumeAt,
   }) async {
-    if (_adBlockStopped ||
-        _isSwitchingProvider ||
+    if (_isSwitchingProvider ||
         (!reload && providerCode == _currentProviderCode)) {
       return false;
     }
@@ -2758,7 +2737,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         _rawVideoLinksByProvider[providerCode] = List.of(result.videoLinks!);
       }
 
-      if (!mounted || _adBlockStopped) return false;
+      if (!mounted) return false;
       final nextSource = source;
       replacementStarted = true;
       _preRollActive = false;
@@ -2771,7 +2750,6 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         ),
         initialPosition: position,
       );
-      if (!mounted || _adBlockStopped) return false;
       _applyPreferredAdaptiveQuality();
       if (!wasPlaying) await _betterPlayerController.pause();
       unawaited(_loadIntroDbTimings());
@@ -2835,7 +2813,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         '[Player] Provider ${reload ? 'refresh' : 'switch'} failed for '
         '$providerCode: $error',
       );
-      if (!mounted || _adBlockStopped) return false;
+      if (!mounted) return false;
       // A refresh has nothing to restore: the previous source is the one
       // that failed.
       if (!reload && replacementStarted && previousDataSource != null) {
@@ -2885,13 +2863,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) => AdBlockPlaybackGuard(
-        stopPlayback: _stopForAdBlocker,
-        television: widget.useTvControls,
-        child: _buildPlayback(context),
-      );
-
-  Widget _buildPlayback(BuildContext context) {
+  Widget build(BuildContext context) {
     _handleScreenOrientation(context);
     if (_isPortraitInlineLayout(context)) {
       return PopScope(
@@ -3523,14 +3495,6 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     if (_activeSources.isEmpty) return;
     if (!mounted || _activeSources.isEmpty) return;
     final providerName = _currentProviderName();
-    final downloadApiBaseUrl = _resolveScraperApiUrl();
-    final providerCode = _currentProviderCode;
-    final downloadProvider = widget.availableProviders
-        ?.where((provider) => provider.codeName == providerCode)
-        .firstOrNull;
-    final rawDownloadLinks = List<RegularVideoLinks>.of(
-      _rawVideoLinksByProvider[providerCode] ?? const [],
-    );
     final sources = Map<String, String>.of(_activeSources);
     final formats = _activeVideoFormats == null
         ? <String, BetterPlayerVideoFormat?>{}
@@ -3625,12 +3589,6 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
               maxVideoHeight: _downloadResolutionHeight(resolution),
               headers: downloadHeaders,
               audioTrack: audioSelection.track,
-              source: OfflineDownloadSource.forSelection(
-                provider: downloadProvider,
-                apiBaseUrl: downloadApiBaseUrl,
-                links: rawDownloadLinks,
-                url: url,
-              ),
               contentId: isMovie ? movie?.movieId : episode?.tvId,
               seasonNumber: isMovie ? null : season,
               episodeNumber: isMovie ? null : episodeNumber,
@@ -3689,8 +3647,10 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
 
   String _currentProviderName() => _providerDisplayName(_currentProviderCode);
 
-  int? _downloadResolutionHeight(String resolution) =>
-      VideoUtils.videoQualityHeight(resolution);
+  int? _downloadResolutionHeight(String resolution) {
+    final match = RegExp(r'(\d{3,4})').firstMatch(resolution);
+    return int.tryParse(match?.group(1) ?? '');
+  }
 
   BetterPlayerSubtitlesSource? _originalSubtitleTrack() {
     BetterPlayerSubtitlesSource? fallback;
@@ -4170,7 +4130,9 @@ class _TvSkipButton extends StatelessWidget {
       );
 }
 
-/// Subtitle languages with timing, online search and file upload tools.
+/// Audio and subtitles in one panel, as Netflix has it: soundtracks beside
+/// the subtitle languages when there is more than one soundtrack, and the
+/// subtitle tools (timing, searching online, a file) along the bottom.
 class _SubtitleSwitcherSheet extends StatefulWidget {
   const _SubtitleSwitcherSheet({
     required this.controller,
@@ -4290,8 +4252,55 @@ class _SubtitleSwitcherSheetState extends State<_SubtitleSwitcherSheet> {
     );
   }
 
+  List<Widget> _audioRows() {
+    final tracks = widget.controller.betterPlayerAsmsAudioTracks ??
+        const <BetterPlayerAsmsAudioTrack>[];
+    final selected = widget.controller.betterPlayerAsmsAudioTrack;
+    return [
+      for (final (index, track) in tracks.indexed)
+        BetterPlayerSelectionTile(
+          title: _audioTrackTitle(track, index),
+          subtitle: _audioTrackSubtitle(track),
+          selected: selected == track || (selected == null && track.isDefault),
+          onTap: () {
+            widget.controller.setAudioTrack(track);
+            widget.onClose();
+          },
+        ),
+    ];
+  }
+
+  /// The audio track's own label when it has one, its language in full
+  /// otherwise ("en" and "eng" both become "English").
+  String _audioTrackTitle(BetterPlayerAsmsAudioTrack track, int index) {
+    final label = languageDisplayName(
+      track.label?.trim().isNotEmpty == true ? track.label : track.language,
+    );
+    return label.isEmpty ? '${tr('player_audio')} ${index + 1}' : label;
+  }
+
+  String? _audioTrackSubtitle(BetterPlayerAsmsAudioTrack track) {
+    if (track.label?.trim().isEmpty != false) return null;
+    final language = languageDisplayName(track.language);
+    return language.isEmpty ? null : language;
+  }
+
+  Widget _heading(String text) => Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 10, 8),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: BetterPlayerPanelColors.of(context).foreground,
+            fontFamily: 'FigtreeBold',
+            fontSize: 16,
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
+    final audio = _audioRows();
+    final withAudio = audio.length > 1;
     final subtitles = [
       for (final option in widget.options) _subtitleRow(option)
     ];
@@ -4302,7 +4311,8 @@ class _SubtitleSwitcherSheetState extends State<_SubtitleSwitcherSheet> {
       expand: false,
       snap: true,
       builder: (context, scrollController) => PlayerSheetScaffold(
-        title: tr('player_subtitles'),
+        title:
+            withAudio ? tr('player_audio_subtitles') : tr('player_subtitles'),
         subtitle: tr('choose_subtitle_language'),
         actions: [
           PlayerSheetAction(
@@ -4316,10 +4326,44 @@ class _SubtitleSwitcherSheetState extends State<_SubtitleSwitcherSheet> {
           onSearchOnline: widget.onSearchOnline,
           onUpload: widget.onUpload,
         ),
-        child: ListView(
-          controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
-          children: subtitles,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (withAudio && constraints.maxWidth >= 560) {
+              Widget column(String title, List<Widget> rows,
+                      {ScrollController? controller}) =>
+                  Expanded(
+                    child: ListView(
+                      controller: controller,
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 24),
+                      children: [_heading(title), ...rows],
+                    ),
+                  );
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  column(tr('player_audio'), audio),
+                  column(
+                    tr('player_subtitles'),
+                    subtitles,
+                    controller: scrollController,
+                  ),
+                ],
+              );
+            }
+            return ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+              children: [
+                if (withAudio) ...[
+                  _heading(tr('player_audio')),
+                  ...audio,
+                  const SizedBox(height: 16),
+                  _heading(tr('player_subtitles')),
+                ],
+                ...subtitles,
+              ],
+            );
+          },
         ),
       ),
     );
