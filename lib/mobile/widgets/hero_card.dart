@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../catalog/home_hero.dart';
@@ -255,8 +254,8 @@ class _HeroKicker extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        SvgPicture.asset(
-          'assets/images/fq_mark.svg',
+        Image.asset(
+          'assets/images/flixtended_ribbon_mark.png',
           height: 18,
         ),
         const SizedBox(width: 6),

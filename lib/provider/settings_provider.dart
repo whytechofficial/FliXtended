@@ -4,9 +4,30 @@ import '../models/app_mode.dart';
 import '../models/default_home.dart';
 import '../preferences/setting_preferences.dart';
 import '../services/analytics_service.dart';
+import '../services/tmdb_connectivity.dart';
 import '../video_providers/names.dart';
 
 class SettingsProvider with ChangeNotifier {
+  SettingsProvider() : _tmdbConnectivity = TmdbConnectivity.instance {
+    _tmdbConnectivity.addListener(_onTmdbRouteChanged);
+  }
+
+  final TmdbConnectivity _tmdbConnectivity;
+
+  void _onTmdbRouteChanged() {
+    _settingsPreferences.setUseProxy(enableProxy);
+    _trackSetting('Proxy Mode', enableProxy);
+    notifyListeners();
+  }
+
+  void disableTmdbProxy() => _tmdbConnectivity.disableForSession();
+
+  @override
+  void dispose() {
+    _tmdbConnectivity.removeListener(_onTmdbRouteChanged);
+    super.dispose();
+  }
+
   final SettingsPreferences _settingsPreferences = SettingsPreferences();
 
   AppMode _appMode = AppMode.automatic;
@@ -111,8 +132,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> get streamProviderOrder =>
       List.unmodifiable(_streamProviderOrder);
 
-  bool _enableProxy = false;
-  bool get enableProxy => _enableProxy;
+  bool get enableProxy => _tmdbConnectivity.proxyEnabled;
 
   String _subtitleTextStyle = 'regular';
   String get subtitleTextStyle => _subtitleTextStyle;
@@ -128,6 +148,22 @@ class SettingsProvider with ChangeNotifier {
 
   bool _autoPipOnLeave = true;
   bool get autoPipOnLeave => _autoPipOnLeave;
+
+  bool _doNotDisturbWhileStreaming = false;
+  bool get doNotDisturbWhileStreaming => _doNotDisturbWhileStreaming;
+
+  Future<void> getStreamingDnd() async {
+    _doNotDisturbWhileStreaming = await _settingsPreferences.getStreamingDnd();
+    notifyListeners();
+  }
+
+  set doNotDisturbWhileStreaming(bool value) {
+    if (_doNotDisturbWhileStreaming == value) return;
+    _doNotDisturbWhileStreaming = value;
+    _settingsPreferences.setStreamingDnd(value);
+    _trackSetting('Do Not Disturb While Streaming', value);
+    notifyListeners();
+  }
 
   bool _autoLoadSources = true;
   bool get autoLoadSources => _autoLoadSources;
@@ -387,6 +423,15 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remembers [providerCode] as the preferred provider for the TV series
+  /// [tvId], so the next episode starts there instead of at the top of the
+  /// provider order.
+  Future<void> setLastTvProvider(int tvId, String providerCode) =>
+      _settingsPreferences.setLastTvProvider(tvId, providerCode);
+
+  String? getLastTvProvider(int tvId) =>
+      _settingsPreferences.getLastTvProvider(tvId);
+
   bool _sameOrder(List<String> left, List<String> right) {
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index++) {
@@ -407,14 +452,9 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> getUseProxyMode() async {
-    enableProxy = await _settingsPreferences.getUseProxy();
-  }
-
-  set enableProxy(bool value) {
-    _enableProxy = value;
-    _settingsPreferences.setUseProxy(value);
-    _trackSetting('Proxy Mode', value);
-    notifyListeners();
+    // Previous versions allowed manual enabling. Never trust that saved flag;
+    // each launch must establish whether the proxy is actually needed.
+    await _settingsPreferences.setUseProxy(false);
   }
 
   Future<void> getSubtitleStyle() async {

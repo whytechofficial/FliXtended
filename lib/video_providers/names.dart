@@ -56,16 +56,16 @@ class VideoProvider {
   );
 
   static const directCastle = VideoProvider(
-    fullName: 'Castle',
-    alias: 'Castle Direct',
+    fullName: 'Hampi',
+    alias: 'Hampi',
     codeName: 'direct:castle',
     type: VideoProviderType.directCastle,
     apiId: 'castle',
   );
 
   static const directNetMirror = VideoProvider(
-    fullName: 'NetMirror',
-    alias: 'NetMirror Direct',
+    fullName: 'Nalanda',
+    alias: 'Nalanda',
     codeName: 'direct:netmirror',
     content: 'Movies and TV | Multi-quality MP4 | Subtitles',
     type: VideoProviderType.directNetMirror,
@@ -73,13 +73,37 @@ class VideoProvider {
   );
 
   static const directMxPlayer = VideoProvider(
-    fullName: 'MX Player',
-    alias: 'MX Player Direct',
+    fullName: 'Dholavira',
+    alias: 'Dholavira',
     codeName: 'direct:mxplayer',
     content: 'Movies and TV | Indian catalog | HLS',
     type: VideoProviderType.directMxPlayer,
     apiId: 'mxplayer',
   );
+
+  /// Default provider priority for fresh installs: scraper sources first
+  /// (Zeila, Abyssinia, Gura, Karamara), then the direct providers
+  /// (Hampi, Nalanda, Dholavira), then the rest of the scraper catalog.
+  static const defaultOrder = <String>[
+    'scraper:movy', // Zeila
+    'scraper:cinejoy', // Abyssinia
+    'scraper:vidup', // Gura
+    'scraper:aethoflix', // Karamara
+    'direct:castle', // Hampi
+    'direct:netmirror', // Nalanda
+    'direct:mxplayer', // Dholavira
+    'scraper:reelix', // Entoto
+    'scraper:animekai', // Lalibela
+    'scraper:animeyy', // Magdala
+    'scraper:animepahe', // Maychew
+    'scraper:stellar', // Debre Tabor
+    'scraper:viv', // Kaffa
+    'scraper:asiaflix', // Adulis
+    'scraper:aether', // Yeha
+    'scraper:kisskh', // Chelenqo
+    'scraper:yoturkish', // Sebastopol
+    'direct:vixsrc', // VixSrc Direct
+  ];
 
   factory VideoProvider.scraper({
     required String id,

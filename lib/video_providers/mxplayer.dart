@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'common.dart';
 
-/// MX Player Direct — streams movies and series from MX Player's web API.
+/// Dholavira — streams movies and series from MX Player's web API.
 ///
 /// Flow:
 /// 1. Search: POST /v1/web/search/resultv2?query={title} → content IDs.

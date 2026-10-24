@@ -27,6 +27,32 @@ class AppColor {
           : Colors.black,
     );
   }
+
+  /// FliXtended brand default: lavender primary + gold secondary.
+  /// Used when Material You dynamic color is off and the user picked no color.
+  static ColorScheme flixtendedDefault(bool isDark) {
+    const lavender = Color(0xFFA78BFA);
+    const gold = Color(0xFFC5A577);
+    final brightness = isDark ? Brightness.dark : Brightness.light;
+    final base = ColorScheme.fromSeed(
+      seedColor: lavender,
+      brightness: brightness,
+    );
+    final goldScheme = ColorScheme.fromSeed(
+      seedColor: gold,
+      brightness: brightness,
+    );
+    return base.copyWith(
+      secondary: goldScheme.secondary,
+      onSecondary: goldScheme.onSecondary,
+      secondaryContainer: goldScheme.secondaryContainer,
+      onSecondaryContainer: goldScheme.onSecondaryContainer,
+      tertiary: goldScheme.tertiary,
+      onTertiary: goldScheme.onTertiary,
+      tertiaryContainer: goldScheme.tertiaryContainer,
+      onTertiaryContainer: goldScheme.onTertiaryContainer,
+    );
+  }
 }
 
 class AppColorsList {
@@ -55,10 +81,10 @@ class AppColorsList {
       const Color(0xFFF43F5E), // Coral Red - Warm red
     ];
 
-    // Default color (index -1) + dynamically generated color list
+    // Default color (index -1): FliXtended brand (lavender + gold)
     return [
       AppColor(
-        cs: AppColor.colorGetter(const Color(0xFFF97316), isDark),
+        cs: AppColor.flixtendedDefault(isDark),
         index: AppColor.defaultIndex,
       ),
       ...List.generate(

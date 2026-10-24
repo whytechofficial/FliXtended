@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/live_tv.dart';
+import 'dlhd_playback_proxy.dart';
 
 /// Traces DLHD stream extraction to the console so a failing channel shows
 /// which step broke. Disabled in release builds: the logged URLs carry
@@ -108,15 +109,15 @@ class DaddyLiveService implements LiveTvService {
       '(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
   static const String _siteReferer = 'https://dlhd.st/';
   static const Duration _pageTimeout = Duration(seconds: 15);
-  static const Duration _pendingBackupLifetime = Duration(minutes: 2);
   static const int _maxEmbedDepth = 2;
-  static const int _priorityPlayerCount = 2;
 
   final String _baseUrl;
   final http.Client _client;
   final Map<String, String> _watchUrlsByChannel = <String, String>{};
-  final Map<String, _PendingDlhdBackups> _pendingBackupsByWatchUrl =
-      <String, _PendingDlhdBackups>{};
+  final _discoveries = <LiveStreamDiscovery>{};
+  final _loaderUrlsByEmbed = <String, Future<String>>{};
+  final _loaderProxies = <DlhdPlaybackProxy>[];
+  bool _closed = false;
 
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('$_baseUrl$path').replace(queryParameters: query);
@@ -219,15 +220,15 @@ class DaddyLiveService implements LiveTvService {
     return DaddyLiveEpg.fromJson(json);
   }
 
-  /// Resolves every locally playable DLHD player for [channelId].
+  /// Resolves the first locally playable DLHD player for [channelId].
   ///
   /// DLHD currently exposes Player 1 through Player 6 on each watch page. Its
   /// signed playlists are bound to the IP that opened the final embed, so URLs
   /// extracted by the metadata API are intentionally not trusted here. The
   /// device fetches the watch page, follows every player/iframe chain, and
-  /// decodes the M3U8 configuration. Every player starts concurrently, but the
-  /// first response waits only for Players 1 and 2. Players 3 onward keep
-  /// resolving in the background and are consumed by automatic failover.
+  /// decodes the M3U8 configuration. Player 1 is tried first; later players are
+  /// tried only if it fails. Once content playback starts, the returned
+  /// discovery resolves the remaining players for selection and failover.
   @override
   Future<DaddyLiveStream> getStream(String channelId) async {
     final stopwatch = Stopwatch()..start();
@@ -337,18 +338,6 @@ class DaddyLiveService implements LiveTvService {
 
   Future<DaddyLiveStream?> _resolveFromWatchPage(String watchUrl) async {
     try {
-      final pending = _pendingBackupsByWatchUrl.remove(watchUrl);
-      if (pending != null &&
-          DateTime.now().difference(pending.createdAt) <
-              _pendingBackupLifetime) {
-        final backups = await pending.players;
-        if (backups.isNotEmpty) {
-          _log('using ${backups.length} pending backup player(s)');
-          return _streamFromResolvedPlayers(backups);
-        }
-        _log('pending backup players all failed, reloading watch page');
-      }
-
       final response = await _getHtml(watchUrl, referer: _siteReferer);
       final finalWatchUrl = response.request?.url.toString() ?? watchUrl;
       final players = _extractPlayers(response.body, finalWatchUrl);
@@ -366,45 +355,31 @@ class DaddyLiveService implements LiveTvService {
         return null;
       }
 
-      // Creating every future before awaiting any of them is deliberate. The
-      // slow ad-heavy providers cannot delay startup, while their usable URLs
-      // are already warm by the time playback needs a fallback.
-      final resolutions = players
-          .map((player) => _resolvePlayer(player, referer: finalWatchUrl))
-          .toList(growable: false);
-      final priorityCount = resolutions.length < _priorityPlayerCount
-          ? resolutions.length
-          : _priorityPlayerCount;
-      final priorityFuture = Future.wait<_ResolvedDlhdPlayer?>(
-        resolutions.take(priorityCount),
-      );
-      final backupFuture = Future.wait<_ResolvedDlhdPlayer?>(
-        resolutions.skip(priorityCount),
-      ).then(
-        (resolved) =>
-            resolved.whereType<_ResolvedDlhdPlayer>().toList(growable: false),
-      );
-      if (resolutions.length > priorityCount) {
-        _pendingBackupsByWatchUrl[watchUrl] = _PendingDlhdBackups(
-          createdAt: DateTime.now(),
-          players: backupFuture,
+      for (var index = 0; index < players.length && !_closed; index++) {
+        final resolved = await _resolvePlayer(
+          players[index],
+          referer: finalWatchUrl,
         );
+        if (resolved == null) continue;
+        LiveStreamDiscovery? discovery;
+        if (index + 1 < players.length) {
+          discovery = LiveStreamDiscovery(
+            initial: resolved.variant,
+            backups: [
+              for (final player in players.skip(index + 1))
+                () async => (await _resolvePlayer(
+                      player,
+                      referer: finalWatchUrl,
+                      cancelled: () => _closed || discovery!.isDisposed,
+                    ))
+                        ?.variant,
+            ],
+          );
+          _discoveries.removeWhere((item) => item.isDisposed);
+          _discoveries.add(discovery);
+        }
+        return _streamFromResolvedPlayers([resolved], discovery: discovery);
       }
-
-      final priority = (await priorityFuture)
-          .whereType<_ResolvedDlhdPlayer>()
-          .toList(growable: false);
-      if (priority.isNotEmpty) return _streamFromResolvedPlayers(priority);
-      _log(
-        'priority players (first $priorityCount) all failed, '
-        'waiting for ${resolutions.length - priorityCount} backup(s)',
-      );
-
-      // Both preferred providers failed. Use the already-running backup batch
-      // rather than starting another scrape or accepting a server-bound token.
-      _pendingBackupsByWatchUrl.remove(watchUrl);
-      final backups = await backupFuture;
-      if (backups.isNotEmpty) return _streamFromResolvedPlayers(backups);
       _log('every player on the watch page failed');
     } catch (error) {
       // A mirror refusal is handled by the metadata fallback in getStream().
@@ -417,25 +392,69 @@ class DaddyLiveService implements LiveTvService {
     _DlhdPlayer player, {
     required String referer,
     Map<String, String> fallbackHeaders = const <String, String>{},
+    bool Function()? cancelled,
   }) async {
     final queue = <({String url, String referer, int depth})>[
       (url: player.url, referer: referer, depth: 0),
     ];
     final visited = <String>{};
     while (queue.isNotEmpty) {
+      if (_closed || cancelled?.call() == true) return null;
       final page = queue.removeAt(0);
       if (!visited.add(page.url)) continue;
       try {
         final response = await _getHtml(page.url, referer: page.referer);
+        if (_closed || cancelled?.call() == true) return null;
         final finalUrl = response.request?.url.toString() ?? page.url;
         final headers = _headersForEmbed(finalUrl, fallbackHeaders);
+        final loader = DlhdPlaybackProxy.fromEmbed(
+          response.body,
+          headers: headers,
+          client: _client,
+        );
+        if (loader != null) {
+          if (_closed) return null;
+          final pending = _loaderUrlsByEmbed.putIfAbsent(finalUrl, () {
+            _loaderProxies.add(loader);
+            return loader.start();
+          });
+          try {
+            final localUrl = await pending;
+            if (_closed || cancelled?.call() == true) {
+              if (identical(_loaderUrlsByEmbed[finalUrl], pending)) {
+                _loaderUrlsByEmbed.remove(finalUrl);
+              }
+              loader.close();
+              return null;
+            }
+            _log(
+                '${player.label}: signed DLHD loader ready for ${loader.channel}');
+            return _ResolvedDlhdPlayer(
+              embedUrl: finalUrl,
+              variant: LiveStreamVariant(
+                url: localUrl,
+                headers: const {},
+                mediaType: 'hls',
+                title: player.label,
+              ),
+            );
+          } catch (_) {
+            if (identical(_loaderUrlsByEmbed[finalUrl], pending)) {
+              _loaderUrlsByEmbed.remove(finalUrl);
+            }
+            loader.close();
+            rethrow;
+          }
+        }
         final candidates = _extractM3u8Urls(response.body, finalUrl);
         _log(
           '${player.label} depth ${page.depth}: $finalUrl -> '
           '${candidates.length} m3u8 candidate(s)',
         );
         for (final candidate in candidates) {
+          if (_closed || cancelled?.call() == true) return null;
           if (await _isPlayable(candidate, headers)) {
+            if (_closed || cancelled?.call() == true) return null;
             _log('${player.label}: playable $candidate');
             return _ResolvedDlhdPlayer(
               embedUrl: finalUrl,
@@ -482,8 +501,9 @@ class DaddyLiveService implements LiveTvService {
   }
 
   DaddyLiveStream _streamFromResolvedPlayers(
-    List<_ResolvedDlhdPlayer> players,
-  ) {
+    List<_ResolvedDlhdPlayer> players, {
+    LiveStreamDiscovery? discovery,
+  }) {
     final first = players.first;
     return DaddyLiveStream(
       url: first.variant.url,
@@ -497,6 +517,7 @@ class DaddyLiveService implements LiveTvService {
       // currently point at the same CDN URL. Their referer/origin headers can
       // differ, and they remain distinct failover routes.
       variants: players.map((player) => player.variant).toList(growable: false),
+      discovery: discovery,
     );
   }
 
@@ -776,7 +797,16 @@ class DaddyLiveService implements LiveTvService {
 
   @override
   void close() {
-    _pendingBackupsByWatchUrl.clear();
+    _closed = true;
+    for (final discovery in _discoveries) {
+      discovery.dispose();
+    }
+    _discoveries.clear();
+    for (final proxy in _loaderProxies) {
+      proxy.close();
+    }
+    _loaderProxies.clear();
+    _loaderUrlsByEmbed.clear();
     _client.close();
   }
 }
@@ -796,14 +826,4 @@ class _ResolvedDlhdPlayer {
 
   final String embedUrl;
   final LiveStreamVariant variant;
-}
-
-class _PendingDlhdBackups {
-  const _PendingDlhdBackups({
-    required this.createdAt,
-    required this.players,
-  });
-
-  final DateTime createdAt;
-  final Future<List<_ResolvedDlhdPlayer>> players;
 }

@@ -573,8 +573,15 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
       onSearch: onSearch,
       onDownloads: onDownloads,
     );
-    final background = ColoredBox(
-      color: palette.scrim(solid * (reduceMotion ? 1 : .94)),
+    final background = DecoratedBox(
+      decoration: BoxDecoration(
+        color: palette.scrim(solid * (reduceMotion ? 1 : 0.85)),
+        border: Border(
+          bottom: BorderSide(
+            color: palette.foreground.withValues(alpha: 0.08 * solid),
+          ),
+        ),
+      ),
     );
     return Stack(
       fit: StackFit.expand,
@@ -583,8 +590,8 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
           ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(
-                sigmaX: 12 * solid,
-                sigmaY: 12 * solid,
+                sigmaX: 20 * solid,
+                sigmaY: 20 * solid,
               ),
               child: background,
             ),
@@ -649,7 +656,8 @@ class _HomeHeader extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
                           AppLogo(
-                            fallbackAsset: 'assets/images/fq_mark.svg',
+                            fallbackAsset:
+                                'assets/images/flixtended_ribbon_mark.png',
                             height: 26,
                           ),
                           const SizedBox(width: 8),

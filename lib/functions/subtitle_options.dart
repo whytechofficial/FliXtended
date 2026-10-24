@@ -70,6 +70,19 @@ String subtitleLanguageKey(BetterPlayerSubtitlesSource source) =>
         .toLowerCase()
         .replaceAll(RegExp(r'\s+'), ' ');
 
+/// Whether a subtitle track's display [name] matches the user's preferred
+/// subtitle [language] code ('en', 'ml', ...). Deliberately loose: providers
+/// label tracks "English", "English (HI)", "Malayalam" and the saved code is
+/// a prefix of those labels.
+bool subtitleMatchesPreferredLanguage(String? name, String language) {
+  final preferred = language.trim().toLowerCase();
+  if (preferred.isEmpty) return false;
+  final normalized = (name ?? '').trim().toLowerCase();
+  if (normalized.isEmpty) return false;
+  return normalized.startsWith(preferred) ||
+      (preferred == 'en' && normalized.startsWith('english'));
+}
+
 /// Key that makes two sources the same track, or null when [source] must never
 /// be collapsed with another. Only a repeated url is a true duplicate; a file
 /// the user added is kept even if its contents happen to match another.

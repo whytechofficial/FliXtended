@@ -248,11 +248,41 @@ better_player_plus:
    TV** or **Mobile**. The interface switches immediately and the choice is saved
    across launches. Choose **Automatic** to return to device detection.
 
+   Android has two flavors: `prod` (the default) and `dev`. To test real banner
+   ads using Firebase's `banner_ad_network_test` selector, run the dev flavor:
+
+   ```bash
+   flutter run --flavor dev
+   flutter run --flavor dev --release
+   ```
+
+   The test selector works in dev debug/profile/release builds. Prod ignores it
+   in every build mode. See [banner testing setup](docs/firebase_remote_config.md#test-real-banners-in-development).
+   Both flavors reuse the existing Android package and Firebase registration;
+   they share an install slot. The dev launcher label is **FlixQuest Dev**.
+
 6. **Build Release APK**:
 
    ```bash
    flutter build apk --release
    ```
+
+   This uses the default `prod` flavor and outputs
+   `build/app/outputs/flutter-apk/app-prod-release.apk`. You can also specify
+   `--flavor prod` explicitly. A development release APK is built with
+   `flutter build apk --flavor dev --release`.
+
+   For smaller per-device downloads, also build split APKs:
+
+   ```bash
+   flutter build apk --release --split-per-abi
+   ```
+
+   The update screen downloads the APK matching the device's CPU. Publish each
+   split APK's link in Remote Config under `app_download_url_arm64_v8a`,
+   `app_download_url_armeabi_v7a` and `app_download_url_x86_64`, and keep the
+   universal APK in `app_download_url`. A device whose ABI can't be read, or
+   whose key is empty, downloads the universal APK.
 
 ---
 
@@ -298,5 +328,5 @@ Contributions, feature suggestions, design ideas, and translations are always we
 
 <p align="center">
   <i>GNU, but for Entertainment</i><br><br>
-  <strong>© 2022–2026 Beamlak Aschalew</strong>
+  <strong>© 2022–2026 FlixQuest</strong>
 </p>

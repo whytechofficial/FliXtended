@@ -1,8 +1,10 @@
+import 'package:flixquest/models/adsterra_playback_ads_config.dart';
 import 'package:flixquest/services/adsterra_playback_ads_service.dart';
 // ignore_for_file: use_build_context_synchronously
 import 'dart:async';
 import 'package:flixquest/functions/function.dart';
 import 'package:flixquest/functions/network.dart';
+import 'package:flixquest/functions/subtitle_options.dart';
 import 'package:flixquest/functions/video_utils.dart';
 import 'package:flixquest/functions/player_route_handoff.dart';
 import 'package:flixquest/models/movie.dart';
@@ -43,12 +45,17 @@ class MovieVideoLoader extends StatefulWidget {
       required this.metadata,
       this.useTvPlayer = false,
       this.onTvPlayerExit,
+      this.adStage = PlaybackAdStage.streamFound,
       super.key});
 
   final bool download;
   final MovieStreamMetadata metadata;
   final bool useTvPlayer;
   final VoidCallback? onTvPlayerExit;
+
+  /// The popup once a source is found: [PlaybackAdStage.episodeSwitch] or
+  /// [PlaybackAdStage.movieSwitch] when the player itself started this load.
+  final PlaybackAdStage adStage;
 
   @override
   State<MovieVideoLoader> createState() => _MovieVideoLoaderState();
@@ -101,8 +108,11 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
 
   Future<void> _startPlayback() async {
     if (!mounted) return;
+    if (!mounted) return;
     _adPreload = AdsterraPlaybackAdsService.instance.preloadStreamFound(context,
-        download: widget.download, television: widget.useTvPlayer);
+        download: widget.download,
+        television: widget.useTvPlayer,
+        stage: widget.adStage);
     try {
       await loadVideo();
     } finally {
@@ -246,7 +256,8 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
         if (!await AdsterraPlaybackAdsService.instance.streamFound(context,
                 download: widget.download,
                 television: widget.useTvPlayer,
-                preload: _adPreload) ||
+                preload: _adPreload,
+                stage: widget.adStage) ||
             !mounted) {
           return;
         }
@@ -312,7 +323,7 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
           'recommendations=${_metadata.recommendations?.length ?? 0} '
           'recommendationIds=${_metadata.recommendations?.map((movie) => movie.movieId).join(',') ?? 'none'}',
         );
-        handoffLoaderToPlayer<Function>(
+        handoffLoaderToPlayer<void>(
           context,
           (context) {
             debugPrint(
@@ -348,12 +359,7 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
             );
             return widget.useTvPlayer ? TvPlayerScreen(child: player) : player;
           },
-        ).then((value) async {
-          if (value != null) {
-            Function callback = value;
-            await callback.call();
-          }
-        });
+        );
       } else {
         if (mounted) {
           _showErrorSheet(tr('movie_vid_404'));
@@ -472,6 +478,7 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
     final download = widget.download;
     final useTvPlayer = widget.useTvPlayer;
     final onTvPlayerExit = widget.onTvPlayerExit;
+    final adStage = widget.adStage;
     navigator.pop();
     ReportErrorWidget.show(
       navigator.context,
@@ -483,6 +490,7 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
             download: download,
             useTvPlayer: useTvPlayer,
             onTvPlayerExit: onTvPlayerExit,
+            adStage: adStage,
           ),
         ),
       ),
@@ -547,6 +555,23 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
     final posterPath = _metadata.posterPath;
     final subtitleTrack = _preferredSubtitle(movieVideoSubs);
     try {
+      final downloadHeaders = videoHeaders[quality] ??
+          VideoUtils.inferVideoHeaders(url) ??
+          const <String, String>{};
+      final audioSelection = await DownloadSelectionSheets.chooseAudio(
+        context,
+        tracks: OfflineDownloadService.instance.getAudioTracks(
+          url: url,
+          format: format,
+          headers: downloadHeaders,
+          maxVideoHeight: _qualityHeight(quality),
+        ),
+      );
+      if (!mounted) return;
+      if (audioSelection == null) {
+        Navigator.pop(context, false);
+        return;
+      }
       await context.read<OfflineDownloadProvider>().enqueue(
             OfflineDownloadRequest(
               id: 'movie_${_metadata.movieId}',
@@ -560,9 +585,8 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
                   ? null
                   : '${TMDB_BASE_IMAGE_URL}w500$posterPath',
               maxVideoHeight: _qualityHeight(quality),
-              headers: videoHeaders[quality] ??
-                  VideoUtils.inferVideoHeaders(url) ??
-                  const {},
+              headers: downloadHeaders,
+              audioTrack: audioSelection.track,
               contentId: _metadata.movieId,
               subtitleTrackUrl: subtitleTrack?.url,
               subtitleTrackName: subtitleTrack?.language,
@@ -576,7 +600,10 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
         provider: providerName,
         quality: quality,
       );
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        AdsterraPlaybackAdsService.instance.afterDownloadQueued(context);
+        Navigator.pop(context, true);
+      }
     } catch (error) {
       settings.analytics.trackDownload(
         action: 'enqueue',
@@ -627,22 +654,17 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
 
   void _addSubtitles(List<RegularSubtitleLinks>? subtitleLinks) {
     if (subtitleLinks == null || subtitleLinks.isEmpty) return;
-    final preferredLang = settings.defaultSubtitleLanguage.toLowerCase();
+    final preferredLang = settings.defaultSubtitleLanguage;
 
     for (final subLink in subtitleLinks) {
       final subLanguage = subLink.language ?? 'Unknown';
-      final normalizedLanguage = subLanguage.toLowerCase();
-      final isPreferred = preferredLang.isNotEmpty &&
-          (normalizedLanguage.startsWith(preferredLang) ||
-              normalizedLanguage == preferredLang ||
-              (preferredLang == 'en' &&
-                  normalizedLanguage.startsWith('english')));
       subs.add(
         BetterPlayerSubtitlesSource(
           type: BetterPlayerSubtitlesSourceType.network,
           urls: [subLink.url ?? ''],
           name: subLanguage,
-          selectedByDefault: isPreferred,
+          selectedByDefault:
+              subtitleMatchesPreferredLanguage(subLanguage, preferredLang),
           headers: subLink.headers,
         ),
       );

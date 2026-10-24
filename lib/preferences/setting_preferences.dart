@@ -2,6 +2,7 @@
 import 'package:flixquest/constants/app_constants.dart';
 import 'package:flixquest/models/app_mode.dart';
 import 'package:flixquest/models/default_home.dart';
+import 'package:flixquest/video_providers/names.dart';
 
 class SettingsPreferences {
   static const APP_MODE = 'app_mode';
@@ -197,6 +198,25 @@ class SettingsPreferences {
   static const STREAM_PROVIDER_ORDER = 'stream_provider_order_v1';
   static const _LEGACY_PROVIDER_PRECEDENCE = 'providerPrecedence-v14';
 
+  /// Last manually-chosen provider per TV series (keyed by TMDB TV id), so
+  /// the next episode starts on the same provider instead of restarting from
+  /// the top of the provider order.
+  static const _LAST_TV_PROVIDER_PREFIX = 'last_tv_provider_';
+
+  Future<void> setLastTvProvider(int tvId, String providerCode) async {
+    await sharedPrefsSingleton.setString(
+      '$_LAST_TV_PROVIDER_PREFIX$tvId',
+      providerCode,
+    );
+  }
+
+  String? getLastTvProvider(int tvId) {
+    final code = sharedPrefsSingleton.getString(
+      '$_LAST_TV_PROVIDER_PREFIX$tvId',
+    );
+    return code == null || code.trim().isEmpty ? null : code;
+  }
+
   Future<void> setStreamProviderOrder(List<String> providerCodes) async {
     await sharedPrefsSingleton.setStringList(
       STREAM_PROVIDER_ORDER,
@@ -212,7 +232,10 @@ class SettingsPreferences {
     // were stored as "code-displayName" tokens, while dynamic providers use
     // namespaced stable codes.
     final legacy = sharedPrefsSingleton.getString(_LEGACY_PROVIDER_PRECEDENCE);
-    if (legacy == null || legacy.trim().isEmpty) return const [];
+    if (legacy == null || legacy.trim().isEmpty) {
+      // Fresh install: start everyone on the curated default order.
+      return VideoProvider.defaultOrder;
+    }
 
     final migrated = _uniqueNonEmpty(
       legacy.trim().split(RegExp(r'\s+')).map((entry) {
@@ -246,8 +269,8 @@ class SettingsPreferences {
 
   static const USE_PROXY = 'use_proxy';
 
-  setUseProxy(bool useProxy) {
-    sharedPrefsSingleton.setBool(USE_PROXY, useProxy);
+  Future<void> setUseProxy(bool useProxy) async {
+    await sharedPrefsSingleton.setBool(USE_PROXY, useProxy);
   }
 
   Future<bool> getUseProxy() async {
@@ -291,6 +314,15 @@ class SettingsPreferences {
   Future<bool> getPlayerAmbientGlowEnabled() async {
     return sharedPrefsSingleton.getBool(PLAYER_AMBIENT_GLOW_ENABLED) ?? false;
   }
+
+  static const STREAMING_DND = 'do_not_disturb_while_streaming';
+
+  Future<void> setStreamingDnd(bool value) async {
+    await sharedPrefsSingleton.setBool(STREAMING_DND, value);
+  }
+
+  Future<bool> getStreamingDnd() async =>
+      sharedPrefsSingleton.getBool(STREAMING_DND) ?? false;
 
   static const AUTO_PIP_ON_LEAVE = 'auto_pip_on_leave';
 

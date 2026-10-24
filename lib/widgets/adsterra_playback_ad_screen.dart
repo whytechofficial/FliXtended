@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/adsterra_playback_ads_config.dart';
+import '../services/playback_ad_browser_service.dart';
 import '../services/playback_ad_input_service.dart';
 
 typedef StoreLauncher = Future<bool> Function(Uri uri);
@@ -22,6 +23,7 @@ class AdsterraPlaybackAdScreen extends StatelessWidget {
       {required this.placement,
       required this.stage,
       this.storeLauncher,
+      this.browserLauncher,
       this.holdClose = true,
       this.television = false,
       this.preload,
@@ -31,6 +33,7 @@ class AdsterraPlaybackAdScreen extends StatelessWidget {
   final PlaybackAdPlacement placement;
   final PlaybackAdStage stage;
   final StoreLauncher? storeLauncher;
+  final PlaybackBrowserLauncher? browserLauncher;
   final PlaybackAdPreload? preload;
   final PlaybackContinueTap? continueTap;
 

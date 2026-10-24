@@ -32,7 +32,14 @@ class MobileNavBar extends StatelessWidget {
     final solid = media.disableAnimations;
     final bar = DecoratedBox(
       decoration: BoxDecoration(
-        color: solid ? palette.page : palette.scrim(0.94),
+        color: solid ? palette.page : palette.scrim(0.82),
+        border: solid
+            ? null
+            : Border(
+                top: BorderSide(
+                  color: palette.foreground.withValues(alpha: 0.10),
+                ),
+              ),
       ),
       child: Padding(
         padding: EdgeInsets.only(bottom: media.padding.bottom),
@@ -59,7 +66,7 @@ class MobileNavBar extends StatelessWidget {
     if (solid) return bar;
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: bar,
       ),
     );
