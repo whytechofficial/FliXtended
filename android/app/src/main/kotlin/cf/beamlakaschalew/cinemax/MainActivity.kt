@@ -17,7 +17,6 @@ import dev.beamlak.flixquest_v2.links.MediaLinkBridge
 import dev.beamlak.flixquest_v2.ads.PlaybackAdInputBridge
 import dev.beamlak.flixquest_v2.ads.PlaybackAdBrowserBridge
 import dev.beamlak.flixquest_v2.playback.StreamingDndBridge
-import io.flutter.plugins.webviewflutter.WebViewFlutterPlugin
 
 class MainActivity: FlutterActivity() {
     private var downloadsBridge: StreamDownloadsBridge? = null
