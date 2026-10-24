@@ -552,8 +552,6 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
             : url.toLowerCase().contains('.mpd')
                 ? 'dash'
                 : 'hls';
-    final requestHeaders =
-        videoHeaders[quality] ?? VideoUtils.inferVideoHeaders(url) ?? const {};
     final posterPath = _metadata.posterPath;
     final subtitleTrack = _preferredSubtitle(movieVideoSubs);
     try {

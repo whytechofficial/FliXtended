@@ -71,10 +71,10 @@ class _FlixQuestState extends State<FlixQuest>
       if (!mounted) return;
       // A slow fetch must not leave playback using the disabled defaults
       // while the last activated settings are already stored on the device.
-<<<<<<< HEAD
       final rcInit = _remoteConfig;
       if (rcInit != null) {
         AppRemoteConfig.apply(rcInit, widget.appDependencyProvider);
+        unawaited(_checkTmdb());
         _configRefresh = RemoteConfigRefreshController(
           fetch: _fetchConfig,
           lastFetchTime: () => rcInit.lastFetchTime,
@@ -90,21 +90,6 @@ class _FlixQuestState extends State<FlixQuest>
           _configRefresh!.pause();
         }
         await _configRefresh!.refresh();
-=======
-      AppRemoteConfig.apply(_remoteConfig, widget.appDependencyProvider);
-      unawaited(_checkTmdb());
-      _configRefresh = RemoteConfigRefreshController(
-        fetch: _fetchConfig,
-        lastFetchTime: () => _remoteConfig.lastFetchTime,
-        connectivityChanges: _connectivity.onConnectivityChanged
-            .map((results) => results.any((r) => r != ConnectivityResult.none)),
-        checkConnectivity: () async => (await _connectivity.checkConnectivity())
-            .any((r) => r != ConnectivityResult.none),
-      );
-      if (WidgetsBinding.instance.lifecycleState != null &&
-          WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
-        _configRefresh!.pause();
->>>>>>> upstream-wanted
       }
       if (mounted) await requestNotificationPermissions();
     } catch (error) {
@@ -148,15 +133,11 @@ class _FlixQuestState extends State<FlixQuest>
       // Cached/default values still provide a safe startup when offline.
     }
     if (mounted) {
-<<<<<<< HEAD
       final rc = _remoteConfig;
       if (rc != null) {
         AppRemoteConfig.apply(rc, widget.appDependencyProvider);
       }
-=======
-      AppRemoteConfig.apply(_remoteConfig, widget.appDependencyProvider);
       unawaited(_checkTmdb());
->>>>>>> upstream-wanted
     }
     return fetched;
   }
@@ -170,15 +151,11 @@ class _FlixQuestState extends State<FlixQuest>
             'keys=${update.updatedKeys.join(',')} activated=$activated');
       }
       if (mounted) {
-<<<<<<< HEAD
         final rc = _remoteConfig;
         if (rc != null) {
           AppRemoteConfig.apply(rc, widget.appDependencyProvider);
         }
-=======
-        AppRemoteConfig.apply(_remoteConfig, widget.appDependencyProvider);
         unawaited(_checkTmdb());
->>>>>>> upstream-wanted
       }
     } catch (error) {
       if (kDebugMode) {

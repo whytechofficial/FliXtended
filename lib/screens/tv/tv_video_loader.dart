@@ -551,8 +551,6 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
             : url.toLowerCase().contains('.mpd')
                 ? 'dash'
                 : 'hls';
-    final requestHeaders =
-        videoHeaders[quality] ?? VideoUtils.inferVideoHeaders(url) ?? const {};
     final posterPath = widget.metadata.posterPath;
     final season = widget.metadata.seasonNumber ?? 0;
     final episode = widget.metadata.episodeNumber ?? 0;
