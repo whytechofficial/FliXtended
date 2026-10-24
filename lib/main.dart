@@ -195,6 +195,7 @@ Future<DevicePresentation> appInitialize({
   await settingsProvider.getIntroDbSettings();
   await settingsProvider.getPlayerAmbientGlowEnabled();
   await settingsProvider.getAutoPipOnLeave();
+  await settingsProvider.getStreamingDnd();
   await settingsProvider.getAutoLoadSources();
   settingsProvider.completeHydration();
   try {

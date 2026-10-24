@@ -7,14 +7,28 @@ import '../../design/app_palette.dart';
 import '../../design/app_tokens.dart';
 import '../../mobile/widgets/page_kit.dart';
 import '../../models/offline_download.dart';
-import '../../services/offline_download_service.dart';
 import '../../video_providers/names.dart';
 import 'player/player_sheet_ui.dart';
 
 /// The choices before a download or a manual playback: which provider, then
-/// which resolution. Plain rows in the app's palette, so they follow the
+/// which resolution and audio track. Plain rows in the app's palette, so they follow the
 /// theme; opened from the player ([inPlayer]) they take the player's.
 abstract final class DownloadSelectionSheets {
+  /// Null means cancelled. A result with no track preserves the stream default.
+  /// The loading sheet also lets users cancel slow manifest inspection.
+  static Future<DownloadAudioSelection?> chooseAudio(
+    BuildContext context, {
+    required Future<List<OfflineAudioTrack>> tracks,
+    bool inPlayer = false,
+  }) {
+    Widget builder(BuildContext context) =>
+        _AudioSelectionSheet(tracks: tracks);
+    return inPlayer
+        ? showPlayerSheet<DownloadAudioSelection>(
+            context: context, builder: builder)
+        : showAppSheet<DownloadAudioSelection>(context, builder: builder);
+  }
+
   static Future<VideoProvider?> showProvider(
     BuildContext context, {
     required List<VideoProvider> providers,
@@ -81,62 +95,8 @@ abstract final class DownloadSelectionSheets {
         : showAppSheet<String>(context, builder: builder);
   }
 
-  /// Audio-track chooser shown before a download when the stream manifest
-  /// lists more than one dub language. Returns null when dismissed.
-  static Future<OfflineAudioTrack?> showAudioTrack(
-    BuildContext context, {
-    required List<OfflineAudioTrack> tracks,
-    bool inPlayer = false,
-  }) {
-    Widget builder(BuildContext context) => _ChoiceSheet<OfflineAudioTrack>(
-          title: tr('download_choose_audio'),
-          subtitle: tr('download_choose_audio_description'),
-          choices: [
-            for (final track in tracks)
-              _Choice(
-                value: track,
-                title: track.displayName,
-                subtitle: '',
-                icon: PhosphorIcons.speakerHigh(),
-              ),
-          ],
-        );
-
-    return inPlayer
-        ? showPlayerSheet<OfflineAudioTrack>(context: context, builder: builder)
-        : showAppSheet<OfflineAudioTrack>(context, builder: builder);
-  }
-
-  /// Checks a stream for multiple audio renditions and, when there is more
-  /// than one, asks the user which dub language to save. Returns
-  /// `cancelled: true` only when the chooser was shown and dismissed; any
-  /// lookup failure or a single track resolves to `language: null` so the
-  /// download proceeds exactly as before.
-  static Future<({bool cancelled, String? language})> pickAudioTrack(
-    BuildContext context, {
-    required String url,
-    required String format,
-    Map<String, String> headers = const {},
-  }) async {
-    List<OfflineAudioTrack> tracks;
-    try {
-      tracks = await OfflineDownloadService.instance.getAudioTracks(
-        url: url,
-        format: format,
-        headers: headers,
-      );
-    } catch (_) {
-      return (cancelled: false, language: null);
-    }
-    if (tracks.length < 2 || !context.mounted) {
-      return (cancelled: false, language: null);
-    }
-    final picked = await showAudioTrack(context, tracks: tracks);
-    if (picked == null) return (cancelled: true, language: null);
-    return (cancelled: false, language: picked.language);
-  }
-
-  static String _resolutionDescription(String resolution) {    final height = int.tryParse(
+  static String _resolutionDescription(String resolution) {
+    final height = int.tryParse(
       RegExp(r'(\d{3,4})').firstMatch(resolution)?.group(1) ?? '',
     );
     if (height == null) return tr('quality_adaptive');
@@ -161,6 +121,90 @@ abstract final class DownloadSelectionSheets {
     final mb = kb / 1024;
     if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
     return '${(mb / 1024).toStringAsFixed(1)} GB';
+  }
+}
+
+class DownloadAudioSelection {
+  const DownloadAudioSelection(this.track);
+
+  final OfflineAudioTrack? track;
+}
+
+class _AudioSelectionSheet extends StatefulWidget {
+  const _AudioSelectionSheet({required this.tracks});
+
+  final Future<List<OfflineAudioTrack>> tracks;
+
+  @override
+  State<_AudioSelectionSheet> createState() => _AudioSelectionSheetState();
+}
+
+class _AudioSelectionSheetState extends State<_AudioSelectionSheet> {
+  List<OfflineAudioTrack>? _tracks;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final tracks = await widget.tracks;
+      if (!mounted) return;
+      if (tracks.length <= 1) {
+        Navigator.pop(context, DownloadAudioSelection(tracks.firstOrNull));
+      } else {
+        setState(() => _tracks = tracks);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final tracks = _tracks;
+    if (tracks != null) {
+      return _ChoiceSheet<DownloadAudioSelection>(
+        title: tr('download_choose_audio'),
+        subtitle: tr('download_audio_description'),
+        choices: [
+          for (final track in tracks)
+            _Choice(
+              value: DownloadAudioSelection(track),
+              title: track.name,
+              subtitle: '',
+              icon: PhosphorIcons.speakerHigh(),
+            ),
+        ],
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.all(AppSpace.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!_failed)
+            SizedBox(
+              width: 120,
+              child: LinearProgressIndicator(
+                color: palette.foreground,
+                backgroundColor: palette.idleFill,
+                minHeight: 3,
+              ),
+            ),
+          const SizedBox(height: AppSpace.md),
+          Text(tr(_failed ? 'download_audio_error' : 'download_audio_loading')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(tr('cancel')),
+          ),
+        ],
+      ),
+    );
   }
 }
 

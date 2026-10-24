@@ -25,6 +25,7 @@ import 'services/deep_link_dispatcher.dart';
 import 'services/home_widget_service.dart';
 import 'services/recently_watched_sync_service.dart';
 import 'services/app_remote_config.dart';
+import 'services/tmdb_connectivity.dart';
 import 'services/remote_config_refresh_controller.dart';
 import 'mobile/app/mobile_shell.dart';
 import 'mobile/app/mobile_update_gate.dart';
@@ -56,6 +57,7 @@ class _FlixQuestState extends State<FlixQuest>
   FirebaseRemoteConfig? _remoteConfig;
   StreamSubscription<RemoteConfigUpdate>? _remoteConfigSubscription;
   Timer? _widgetRefreshDebounce;
+  StreamSubscription<List<ConnectivityResult>>? _tmdbNetworkSubscription;
 
   final Connectivity _connectivity = Connectivity();
   RemoteConfigRefreshController? _configRefresh;
@@ -69,6 +71,7 @@ class _FlixQuestState extends State<FlixQuest>
       if (!mounted) return;
       // A slow fetch must not leave playback using the disabled defaults
       // while the last activated settings are already stored on the device.
+<<<<<<< HEAD
       final rcInit = _remoteConfig;
       if (rcInit != null) {
         AppRemoteConfig.apply(rcInit, widget.appDependencyProvider);
@@ -87,6 +90,21 @@ class _FlixQuestState extends State<FlixQuest>
           _configRefresh!.pause();
         }
         await _configRefresh!.refresh();
+=======
+      AppRemoteConfig.apply(_remoteConfig, widget.appDependencyProvider);
+      unawaited(_checkTmdb());
+      _configRefresh = RemoteConfigRefreshController(
+        fetch: _fetchConfig,
+        lastFetchTime: () => _remoteConfig.lastFetchTime,
+        connectivityChanges: _connectivity.onConnectivityChanged
+            .map((results) => results.any((r) => r != ConnectivityResult.none)),
+        checkConnectivity: () async => (await _connectivity.checkConnectivity())
+            .any((r) => r != ConnectivityResult.none),
+      );
+      if (WidgetsBinding.instance.lifecycleState != null &&
+          WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+        _configRefresh!.pause();
+>>>>>>> upstream-wanted
       }
       if (mounted) await requestNotificationPermissions();
     } catch (error) {
@@ -130,10 +148,15 @@ class _FlixQuestState extends State<FlixQuest>
       // Cached/default values still provide a safe startup when offline.
     }
     if (mounted) {
+<<<<<<< HEAD
       final rc = _remoteConfig;
       if (rc != null) {
         AppRemoteConfig.apply(rc, widget.appDependencyProvider);
       }
+=======
+      AppRemoteConfig.apply(_remoteConfig, widget.appDependencyProvider);
+      unawaited(_checkTmdb());
+>>>>>>> upstream-wanted
     }
     return fetched;
   }
@@ -147,10 +170,15 @@ class _FlixQuestState extends State<FlixQuest>
             'keys=${update.updatedKeys.join(',')} activated=$activated');
       }
       if (mounted) {
+<<<<<<< HEAD
         final rc = _remoteConfig;
         if (rc != null) {
           AppRemoteConfig.apply(rc, widget.appDependencyProvider);
         }
+=======
+        AppRemoteConfig.apply(_remoteConfig, widget.appDependencyProvider);
+        unawaited(_checkTmdb());
+>>>>>>> upstream-wanted
       }
     } catch (error) {
       if (kDebugMode) {
@@ -187,6 +215,18 @@ class _FlixQuestState extends State<FlixQuest>
     WidgetsBinding.instance.addObserver(this);
     WellnessProvider.instance.addListener(_scheduleLocalWidgetRefresh);
     widget.bookmarkProvider.addListener(_scheduleLocalWidgetRefresh);
+    TmdbConnectivity.instance.proxyUrlSource =
+        () => widget.appDependencyProvider.tmdbProxy;
+    unawaited(_checkTmdb());
+    _tmdbNetworkSubscription = _connectivity.onConnectivityChanged.listen(
+      (results) {
+        final available =
+            results.any((result) => result != ConnectivityResult.none);
+        TmdbConnectivity.instance.updateNetworkAvailability(available);
+        if (available) unawaited(_checkTmdb());
+      },
+      onError: (Object _) {},
+    );
     _initConfig();
     fileDelete();
     InAppMessagingService.initialize();
@@ -195,6 +235,12 @@ class _FlixQuestState extends State<FlixQuest>
       unawaited(_refreshHomeWidgets());
     });
   }
+
+  Future<void> _checkTmdb({bool networkChanged = false}) =>
+      TmdbConnectivity.instance.check(
+        widget.appDependencyProvider.tmdbProxy,
+        networkChanged: networkChanged,
+      );
 
   void _scheduleLocalWidgetRefresh() {
     _widgetRefreshDebounce?.cancel();
@@ -223,6 +269,7 @@ class _FlixQuestState extends State<FlixQuest>
       return;
     }
     DeepLinkDispatcher.onAppReady();
+    unawaited(_checkTmdb());
     unawaited(_refreshHomeWidgets());
     unawaited(RecentlyWatchedSyncService.instance.autoSyncIfSignedIn());
     unawaited(_configRefresh?.resume());
@@ -236,6 +283,8 @@ class _FlixQuestState extends State<FlixQuest>
     _widgetRefreshDebounce?.cancel();
     _configRefresh?.dispose();
     _remoteConfigSubscription?.cancel();
+    _tmdbNetworkSubscription?.cancel();
+    TmdbConnectivity.instance.proxyUrlSource = null;
     super.dispose();
   }
 

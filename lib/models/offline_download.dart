@@ -36,6 +36,7 @@ class OfflineDownload {
     this.episodeNumber,
     this.offlineSubtitlePath,
     this.offlineSubtitleName,
+    this.audioTrackName,
   });
 
   final String id;
@@ -56,6 +57,7 @@ class OfflineDownload {
   final int? episodeNumber;
   final String? offlineSubtitlePath;
   final String? offlineSubtitleName;
+  final String? audioTrackName;
 
   bool get isComplete => state == OfflineDownloadState.completed;
   bool get isActive =>
@@ -95,6 +97,7 @@ class OfflineDownload {
       episodeNumber: episodeNumber,
       offlineSubtitlePath: offlineSubtitlePath,
       offlineSubtitleName: offlineSubtitleName,
+      audioTrackName: audioTrackName,
     );
   }
 
@@ -127,8 +130,23 @@ class OfflineDownload {
       episodeNumber: value<num>('episodeNumber')?.toInt(),
       offlineSubtitlePath: value<String>('offlineSubtitlePath'),
       offlineSubtitleName: value<String>('offlineSubtitleName'),
+      audioTrackName: value<String>('audioTrackName'),
     );
   }
+}
+
+/// A native stream track, including its identity for an exact download override.
+class OfflineAudioTrack {
+  const OfflineAudioTrack({required this.name, required this.selection});
+
+  final String name;
+  final Map<String, Object?> selection;
+
+  factory OfflineAudioTrack.fromMap(Map<Object?, Object?> map) =>
+      OfflineAudioTrack(
+        name: map['name'] as String? ?? 'Audio',
+        selection: Map<String, Object?>.from(map['selection'] as Map),
+      );
 }
 
 class OfflineDownloadRequest {
@@ -149,7 +167,7 @@ class OfflineDownloadRequest {
     this.subtitleTrackUrl,
     this.subtitleTrackName,
     this.subtitleTrackHeaders = const {},
-    this.audioTrackLanguage,
+    this.audioTrack,
   });
 
   final String id;
@@ -168,11 +186,7 @@ class OfflineDownloadRequest {
   final String? subtitleTrackUrl;
   final String? subtitleTrackName;
   final Map<String, String> subtitleTrackHeaders;
-
-  /// Language selector key of the audio rendition to save (e.g. 'ta', 'hi').
-  /// Null means the downloader's default audio track. Set from
-  /// [OfflineAudioTrack.language] after the user picks from the chooser.
-  final String? audioTrackLanguage;
+  final OfflineAudioTrack? audioTrack;
 
   Map<String, Object?> toMap() => {
         'id': id,
@@ -185,82 +199,13 @@ class OfflineDownloadRequest {
         'posterUrl': posterUrl,
         'maxVideoHeight': maxVideoHeight,
         'headers': headers,
+        'audioTrack': audioTrack?.selection,
+        'audioTrackName': audioTrack?.name,
         'contentId': contentId,
         'seasonNumber': seasonNumber,
         'episodeNumber': episodeNumber,
         'subtitleTrackUrl': subtitleTrackUrl,
         'subtitleTrackName': subtitleTrackName,
         'subtitleTrackHeaders': subtitleTrackHeaders,
-        'audioTrackLanguage': audioTrackLanguage,
       };
 }
-
-/// One audio rendition of a downloadable stream (a dub language), as listed by
-/// the native downloader from the stream manifest.
-class OfflineAudioTrack {
-  const OfflineAudioTrack({
-    required this.language,
-    this.label,
-    this.rawLanguage,
-    this.trackId,
-  });
-
-  /// Selector key handed back to the native downloader: the playlist language
-  /// tag, or the rendition label when no language tag exists.
-  final String language;
-  final String? label;
-  final String? rawLanguage;
-  final String? trackId;
-
-  /// Human-friendly name for the chooser row: the playlist label when it
-  /// already reads well (e.g. "Hindi"), otherwise the English language name
-  /// for the tag, otherwise the tag itself.
-  String get displayName {
-    if (label != null && label!.isNotEmpty) return label!;
-    final code = (rawLanguage ?? language).toLowerCase();
-    final known = _englishNameForLanguageCode(code);
-    if (known != null) return known;
-    return code.toUpperCase();
-  }
-
-  factory OfflineAudioTrack.fromMap(Map<Object?, Object?> map) {
-    String? value(String key) {
-      final raw = map[key];
-      return raw is String && raw.isNotEmpty ? raw : null;
-    }
-
-    return OfflineAudioTrack(
-      language: value('language') ?? 'und',
-      label: value('label'),
-      rawLanguage: value('rawLanguage'),
-      trackId: value('trackId'),
-    );
-  }
-}
-
-String? _englishNameForLanguageCode(String code) {
-  for (final entry in _audioLanguageNames) {
-    if (entry.$1 == code) return entry.$2;
-  }
-  return null;
-}
-
-/// English names for the audio language tags most likely to appear in
-/// multi-dub streams. Kept local so the download model does not depend on the
-/// subtitle language tables.
-const List<(String, String)> _audioLanguageNames = [
-  ('en', 'English'),
-  ('hi', 'Hindi'),
-  ('ta', 'Tamil'),
-  ('te', 'Telugu'),
-  ('ml', 'Malayalam'),
-  ('kn', 'Kannada'),
-  ('bn', 'Bengali'),
-  ('mr', 'Marathi'),
-  ('gu', 'Gujarati'),
-  ('pa', 'Punjabi'),
-  ('es', 'Spanish'),
-  ('fr', 'French'),
-  ('de', 'German'),
-  ('ar', 'Arabic'),
-];

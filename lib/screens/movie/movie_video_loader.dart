@@ -323,7 +323,7 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
           'recommendations=${_metadata.recommendations?.length ?? 0} '
           'recommendationIds=${_metadata.recommendations?.map((movie) => movie.movieId).join(',') ?? 'none'}',
         );
-        handoffLoaderToPlayer<Function>(
+        handoffLoaderToPlayer<void>(
           context,
           (context) {
             debugPrint(
@@ -359,12 +359,7 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
             );
             return widget.useTvPlayer ? TvPlayerScreen(child: player) : player;
           },
-        ).then((value) async {
-          if (value != null) {
-            Function callback = value;
-            await callback.call();
-          }
-        });
+        );
       } else {
         if (mounted) {
           _showErrorSheet(tr('movie_vid_404'));
@@ -559,26 +554,26 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
                 : 'hls';
     final requestHeaders =
         videoHeaders[quality] ?? VideoUtils.inferVideoHeaders(url) ?? const {};
-    final audioPick = await DownloadSelectionSheets.pickAudioTrack(
-      context,
-      url: url,
-      format: format,
-      headers: requestHeaders,
-    );
-    if (!mounted) return;
-    if (audioPick.cancelled) {
-      settings.analytics.trackDownload(
-        action: 'audio_selection',
-        mediaType: 'movie',
-        outcome: 'cancelled',
-        provider: providerName,
-      );
-      Navigator.pop(context, false);
-      return;
-    }
     final posterPath = _metadata.posterPath;
     final subtitleTrack = _preferredSubtitle(movieVideoSubs);
     try {
+      final downloadHeaders = videoHeaders[quality] ??
+          VideoUtils.inferVideoHeaders(url) ??
+          const <String, String>{};
+      final audioSelection = await DownloadSelectionSheets.chooseAudio(
+        context,
+        tracks: OfflineDownloadService.instance.getAudioTracks(
+          url: url,
+          format: format,
+          headers: downloadHeaders,
+          maxVideoHeight: _qualityHeight(quality),
+        ),
+      );
+      if (!mounted) return;
+      if (audioSelection == null) {
+        Navigator.pop(context, false);
+        return;
+      }
       await context.read<OfflineDownloadProvider>().enqueue(
             OfflineDownloadRequest(
               id: 'movie_${_metadata.movieId}',
@@ -592,12 +587,12 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
                   ? null
                   : '${TMDB_BASE_IMAGE_URL}w500$posterPath',
               maxVideoHeight: _qualityHeight(quality),
-              headers: requestHeaders,
+              headers: downloadHeaders,
+              audioTrack: audioSelection.track,
               contentId: _metadata.movieId,
               subtitleTrackUrl: subtitleTrack?.url,
               subtitleTrackName: subtitleTrack?.language,
               subtitleTrackHeaders: subtitleTrack?.headers ?? const {},
-              audioTrackLanguage: audioPick.language,
             ),
           );
       settings.analytics.trackDownload(

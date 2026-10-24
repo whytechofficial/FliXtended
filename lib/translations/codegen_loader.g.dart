@@ -816,9 +816,23 @@ class CodegenLoader extends AssetLoader{
   "live_sport_volleyball": "الكرة الطائرة",
   "live_sport_handball": "كرة اليد",
   "live_sport_horse_racing": "سباق الخيل",
-  "event_count": "{'zero': 'لا مباريات', 'one': 'مباراة واحدة', 'two': 'مباراتان', 'few': '{} مباريات', 'many': '{} مباراة', 'other': '{} مباراة'}",
+  "event_count": {
+    "zero": "لا مباريات",
+    "one": "مباراة واحدة",
+    "two": "مباراتان",
+    "few": "{} مباريات",
+    "many": "{} مباراة",
+    "other": "{} مباراة"
+  },
   "times_in_zone": "الأوقات بتوقيت {zone}",
-  "channel_count": "{'zero': 'لا قنوات', 'one': 'قناة واحدة', 'two': 'قناتان', 'few': '{} قنوات', 'many': '{} قناة', 'other': '{} قناة'}",
+  "channel_count": {
+    "zero": "لا قنوات",
+    "one": "قناة واحدة",
+    "two": "قناتان",
+    "few": "{} قنوات",
+    "many": "{} قناة",
+    "other": "{} قناة"
+  },
   "channel_number": "القناة {id}",
   "share_channel": "مشاركة القناة",
   "remove_from_favorites": "إزالة من المفضلة",
@@ -833,7 +847,14 @@ class CodegenLoader extends AssetLoader{
   "choose_episode": "اختر حلقة",
   "guest_stars_line": "ضيوف الشرف: {names}",
   "writers_line": "الكتّاب: {names}",
-  "video_source_count": "{'zero': 'لا مصادر', 'one': 'مصدر واحد', 'two': 'مصدران', 'few': '{} مصادر', 'many': '{} مصدرًا', 'other': '{} مصدر'}",
+  "video_source_count": {
+    "zero": "لا مصادر",
+    "one": "مصدر واحد",
+    "two": "مصدران",
+    "few": "{} مصادر",
+    "many": "{} مصدرًا",
+    "other": "{} مصدر"
+  },
   "never": "أبدًا",
   "n_minutes_ago": "منذ {n} د",
   "n_hours_ago": "منذ {n} س",
@@ -852,7 +873,14 @@ class CodegenLoader extends AssetLoader{
   "remove": "إزالة",
   "loading_episodes": "جارٍ تحميل الحلقات",
   "collection": "مجموعة",
-  "movie_count": "{'zero': 'لا أفلام', 'one': 'فيلم واحد', 'two': 'فيلمان', 'few': '{} أفلام', 'many': '{} فيلمًا', 'other': '{} فيلم'}",
+  "movie_count": {
+    "zero": "لا أفلام",
+    "one": "فيلم واحد",
+    "two": "فيلمان",
+    "few": "{} أفلام",
+    "many": "{} فيلمًا",
+    "other": "{} فيلم"
+  },
   "ins_title": "إحصاءات المشاهدة",
   "ins_options": "خيارات إحصاءات المشاهدة",
   "ins_share_recap": "مشاركة الملخص",
@@ -892,7 +920,14 @@ class CodegenLoader extends AssetLoader{
   "ins_export_desc": "نزّل جلساتك بصيغتي JSON وCSV.",
   "ins_clear_title": "مسح سجل المشاهدة",
   "ins_clear_desc": "احذف كل الجلسات المخزنة محليًا والمتزامنة.",
-  "ins_active_days": "{'zero': 'لا أيام نشطة', 'one': 'يوم نشط واحد', 'two': 'يومان نشطان', 'few': '{} أيام نشطة', 'many': '{} يومًا نشطًا', 'other': '{} يوم نشط'}",
+  "ins_active_days": {
+    "zero": "لا أيام نشطة",
+    "one": "يوم نشط واحد",
+    "two": "يومان نشطان",
+    "few": "{} أيام نشطة",
+    "many": "{} يومًا نشطًا",
+    "other": "{} يوم نشط"
+  },
   "ins_caption": "{period} على FliXtended: {time} من القصص خلال {days}.",
   "ins_caption_top": " كان العنوان الأكثر مشاهدة لديّ {title}.",
   "ins_caption_copied": "تم نسخ النص",
@@ -982,14 +1017,28 @@ class CodegenLoader extends AssetLoader{
   "ins_nothing_range": "لم يُسجَّل شيء في هذه الفترة بعد.",
   "ins_timeline_summary": "اضغط على أي عمود لعرض ذلك {unit}. الأكثر نشاطًا كان {label} بمقدار {time}؛ يحدد الخط متوسطك {average} خلال {n} {units} نشطة.",
   "ins_no_viewing": "لا توجد مشاهدة مسجلة",
-  "ins_session_count": "{'zero': 'لا جلسات', 'one': 'جلسة واحدة', 'two': 'جلستان', 'few': '{} جلسات', 'many': '{} جلسة', 'other': '{} جلسة'}",
+  "ins_session_count": {
+    "zero": "لا جلسات",
+    "one": "جلسة واحدة",
+    "two": "جلستان",
+    "few": "{} جلسات",
+    "many": "{} جلسة",
+    "other": "{} جلسة"
+  },
   "ins_bucket_share": "{share} من الفترة · {sessions}",
   "ins_more_this": "+{n} أخرى في هذا {unit}",
   "ins_col_time": "الوقت",
   "ins_col_share": "النسبة",
   "ins_consistency": "الانتظام",
   "ins_no_streak": "لا توجد سلسلة نشطة الآن",
-  "ins_streak_row": "{'zero': 'لا أيام متتالية', 'one': 'يوم واحد متتالٍ', 'two': 'يومان متتاليان', 'few': '{} أيام متتالية', 'many': '{} يومًا متتاليًا', 'other': '{} يوم متتالٍ'}",
+  "ins_streak_row": {
+    "zero": "لا أيام متتالية",
+    "one": "يوم واحد متتالٍ",
+    "two": "يومان متتاليان",
+    "few": "{} أيام متتالية",
+    "many": "{} يومًا متتاليًا",
+    "other": "{} يوم متتالٍ"
+  },
   "ins_longest_streak": "أطول سلسلة",
   "ins_daily_semantics": "وقت المشاهدة اليومي لآخر 14 يومًا. شهد {n} من 14 يومًا مشاهدة.",
   "ins_last_14_active": "آخر 14 يومًا · {n} نشطة",
@@ -1038,7 +1087,14 @@ class CodegenLoader extends AssetLoader{
   "ins_empty_start": "قصة مشاهدتك تبدأ هنا",
   "ins_empty_period_desc": "جرّب فترة زمنية أخرى لاستعادة مشاهداتك السابقة.",
   "ins_empty_start_desc": "شاهد 30 ثانية على الأقل وسيبدأ FliXtended ببناء إحصاءات خاصة عن وقتك وعناوينك وذوقك وأنماطك.",
-  "ins_episode_count": "{'zero': 'لا حلقات', 'one': 'حلقة واحدة', 'two': 'حلقتان', 'few': '{} حلقات', 'many': '{} حلقة', 'other': '{} حلقة'}",
+  "ins_episode_count": {
+    "zero": "لا حلقات",
+    "one": "حلقة واحدة",
+    "two": "حلقتان",
+    "few": "{} حلقات",
+    "many": "{} حلقة",
+    "other": "{} حلقة"
+  },
   "ins_tracking_begins": "يبدأ التتبع مع جلسة مشاهدتك التالية",
   "ins_tracking_since": "التتبع منذ {date}",
   "ins_unit_day": "يوم",
@@ -1437,7 +1493,13 @@ class CodegenLoader extends AssetLoader{
   "tv_popular_on": "الأكثر شعبية على {service}",
   "tv_search_genre_description": "الأكثر مشاهدة من {kind} من نوع {genre}.",
   "tv_library_all": "كل {kind} · {count}",
-  "tv_title_count": "{'one': '{count} عنوان', 'two': '{count} عنوانان', 'few': '{count} عناوين', 'many': '{count} عنوان', 'other': '{count} عنوان'}",
+  "tv_title_count": {
+    "one": "{count} عنوان",
+    "two": "{count} عنوانان",
+    "few": "{count} عناوين",
+    "many": "{count} عنوان",
+    "other": "{count} عنوان"
+  },
   "tv_library_description": "كل {kind} في قائمتي، الأحدث إضافةً أولاً.",
   "tv_resume_episode": "متابعة {episode}",
   "tv_play_first_episode": "تشغيل الموسم {season} الحلقة 1",
@@ -1464,8 +1526,20 @@ class CodegenLoader extends AssetLoader{
   "tv_category_semantics": "فئة {category}",
   "tv_letter_channels": "قنوات تبدأ بـ {letter}",
   "tv_day_schedule": "جدول {day}",
-  "tv_events_count": "{'one': '{count} حدث', 'two': '{count} حدثان', 'few': '{count} أحداث', 'many': '{count} حدث', 'other': '{count} حدث'}",
-  "tv_channels_count": "{'one': '{count} قناة', 'two': '{count} قناتان', 'few': '{count} قنوات', 'many': '{count} قناة', 'other': '{count} قناة'}",
+  "tv_events_count": {
+    "one": "{count} حدث",
+    "two": "{count} حدثان",
+    "few": "{count} أحداث",
+    "many": "{count} حدث",
+    "other": "{count} حدث"
+  },
+  "tv_channels_count": {
+    "one": "{count} قناة",
+    "two": "{count} قناتان",
+    "few": "{count} قنوات",
+    "many": "{count} قناة",
+    "other": "{count} قناة"
+  },
   "tv_event_semantics": "{title}، {channels}، {state}",
   "tv_expanded": "موسع",
   "tv_collapsed": "مطوي",
@@ -1475,8 +1549,20 @@ class CodegenLoader extends AssetLoader{
   "tv_active_period_summary": "{count} {unit} نشطة · متوسط يوم المشاهدة {time}",
   "tv_busiest_period": "أكثر {unit} مشاهدة: {label} · {time}",
   "tv_active_days_of": "{active} من {total}",
-  "tv_days_count": "{'one': '{count} يوم', 'two': '{count} يومان', 'few': '{count} أيام', 'many': '{count} يوم', 'other': '{count} يوم'}",
-  "tv_episodes_count": "{'one': '{count} حلقة', 'two': '{count} حلقتان', 'few': '{count} حلقات', 'many': '{count} حلقة', 'other': '{count} حلقة'}",
+  "tv_days_count": {
+    "one": "{count} يوم",
+    "two": "{count} يومان",
+    "few": "{count} أيام",
+    "many": "{count} يوم",
+    "other": "{count} يوم"
+  },
+  "tv_episodes_count": {
+    "one": "{count} حلقة",
+    "two": "{count} حلقتان",
+    "few": "{count} حلقات",
+    "many": "{count} حلقة",
+    "other": "{count} حلقة"
+  },
   "tv_busiest_window": "أكثر فترة مشاهدة: {day} الساعة {hour} · {time}",
   "tv_duration": "{hours} س {minutes} د",
   "tv_seconds": "{seconds} ث",
@@ -1503,8 +1589,36 @@ class CodegenLoader extends AssetLoader{
   "ad_blocker_private_dns_hint": "هل تستخدم DNS خاصًا مثل AdGuard DNS أو NextDNS؟ اضبط DNS الخاص على تلقائي أو إيقاف في إعدادات الشبكة.",
   "ad_blocker_still_detected": "مانع الإعلانات لا يزال يعمل. أوقفه أو اضبط DNS الخاص على تلقائي أو إيقاف، ثم حاول مرة أخرى.",
   "ad_blocker_retry": "أوقفته",
+  "download_choose_audio": "اختر لغة الصوت",
+  "download_audio_description": "اختر المسار الصوتي لحفظه مع هذا الفيديو.",
+  "download_audio_loading": "جارٍ التحقق من المسارات الصوتية…",
+  "download_audio_error": "تعذر التحقق من المسارات الصوتية. أغلق وحاول مجددًا أو اختر مصدرًا آخر.",
+  "stream_feedback_title": "كيف كانت تجربة المشاهدة؟",
+  "stream_feedback_description": "تساعدنا ملاحظاتك على تحسين التشغيل.",
+  "stream_feedback_good": "جيدة",
+  "stream_feedback_okay": "مقبولة",
+  "stream_feedback_bad": "سيئة",
+  "stream_feedback_issue_question": "ما المشكلة الرئيسية؟ (اختياري)",
+  "stream_feedback_issue_buffering": "توقف للتخزين المؤقت",
+  "stream_feedback_issue_did_not_play": "لم يعمل",
+  "stream_feedback_issue_quality": "جودة الفيديو",
+  "stream_feedback_issue_audio": "الصوت",
+  "stream_feedback_issue_subtitles": "الترجمة",
+  "stream_feedback_issue_wrong_content": "محتوى غير صحيح",
+  "stream_feedback_issue_other": "أخرى",
+  "stream_feedback_skip": "تخطي",
+  "stream_feedback_submit": "إرسال",
+  "tmdb_proxy_automatic": "يتم تفعيله تلقائيًا عندما يتعذر الوصول إلى TMDB. يمكنك إيقافه خلال جلسة التطبيق الحالية.",
+  "tmdb_proxy_turn_off": "مفعّل · إيقاف",
+  "tmdb_proxy_auto_off": "متوقف · تلقائي",
+  "streaming_dnd": "عدم الإزعاج أثناء المشاهدة",
+  "streaming_dnd_description": "كتم الإشعارات وإخفاء نوافذ المكالمات أثناء فتح المشغل. يتوقف عند الخروج أو الانتقال إلى الخلفية. تبقى الوسائط والمنبهات مسموحة؛ قد تستمر استثناءات النظام في المقاطعة.",
+  "streaming_dnd_access_required": "يتطلب إذن عدم الإزعاج. متاح لمشغلات الفيديو والتلفزيون المباشر على الهاتف بنظام Android 10 أو أحدث.",
+  "streaming_dnd_permission_description": "اسمح لـ FlixQuest بالوصول إلى عدم الإزعاج في إعدادات Android. عندما يكون المشغل في المقدمة، يكتم FlixQuest الإشعارات مؤقتًا ويخفي نوافذ الإشعارات والمكالمات على الجهاز. تبقى أوضاع عدم الإزعاج الحالية كما هي وتنتهي قاعدة المشاهدة عند الخروج. تبقى الوسائط والمنبهات مسموحة. قد تظهر تنبيهات الطوارئ وبعض شاشات النظام أو تطبيقات الاتصال.",
+  "streaming_dnd_open_settings": "فتح الإعدادات",
+  "streaming_dnd_unavailable": "تعذر فتح إعدادات إذن عدم الإزعاج على هذا الجهاز."
 };
-  static const Map<String,dynamic> _en = {
+static const Map<String,dynamic> _en = {
   "popularity_descending": "Popularity descending",
   "popularity_ascending": "Popularity ascending",
   "average_vote_descending": "Average rating descending",
@@ -2306,9 +2420,15 @@ class CodegenLoader extends AssetLoader{
   "live_sport_volleyball": "Volleyball",
   "live_sport_handball": "Handball",
   "live_sport_horse_racing": "Horse Racing",
-  "event_count": "{'one': '{} match', 'other': '{} matches'}",
+  "event_count": {
+    "one": "{} match",
+    "other": "{} matches"
+  },
   "times_in_zone": "Times in {zone}",
-  "channel_count": "{'one': '{} channel', 'other': '{} channels'}",
+  "channel_count": {
+    "one": "{} channel",
+    "other": "{} channels"
+  },
   "channel_number": "Channel {id}",
   "share_channel": "Share channel",
   "remove_from_favorites": "Remove from favorites",
@@ -2323,7 +2443,10 @@ class CodegenLoader extends AssetLoader{
   "choose_episode": "Choose an episode",
   "guest_stars_line": "Guest stars: {names}",
   "writers_line": "Writers: {names}",
-  "video_source_count": "{'one': '{} source', 'other': '{} sources'}",
+  "video_source_count": {
+    "one": "{} source",
+    "other": "{} sources"
+  },
   "never": "Never",
   "n_minutes_ago": "{n}m ago",
   "n_hours_ago": "{n}h ago",
@@ -2342,7 +2465,10 @@ class CodegenLoader extends AssetLoader{
   "remove": "Remove",
   "loading_episodes": "Loading episodes",
   "collection": "Collection",
-  "movie_count": "{'one': '{} movie', 'other': '{} movies'}",
+  "movie_count": {
+    "one": "{} movie",
+    "other": "{} movies"
+  },
   "ins_title": "Viewing Insights",
   "ins_options": "Viewing Insights options",
   "ins_share_recap": "Share recap",
@@ -2382,7 +2508,10 @@ class CodegenLoader extends AssetLoader{
   "ins_export_desc": "Download your sessions as JSON and CSV.",
   "ins_clear_title": "Clear viewing history",
   "ins_clear_desc": "Remove all locally stored and synced sessions.",
-  "ins_active_days": "{'one': '{} active day', 'other': '{} active days'}",
+  "ins_active_days": {
+    "one": "{} active day",
+    "other": "{} active days"
+  },
   "ins_caption": "{period} on FliXtended: {time} of stories across {days}.",
   "ins_caption_top": " My most-watched title was {title}.",
   "ins_caption_copied": "Caption copied",
@@ -2472,14 +2601,20 @@ class CodegenLoader extends AssetLoader{
   "ins_nothing_range": "Nothing recorded in this range yet.",
   "ins_timeline_summary": "Tap any bar for that {unit}. Busiest was {label} at {time}; the line marks your {average} average across {n} active {units}.",
   "ins_no_viewing": "No viewing recorded",
-  "ins_session_count": "{'one': '{} session', 'other': '{} sessions'}",
+  "ins_session_count": {
+    "one": "{} session",
+    "other": "{} sessions"
+  },
   "ins_bucket_share": "{share} of the range · {sessions}",
   "ins_more_this": "+{n} more this {unit}",
   "ins_col_time": "Time",
   "ins_col_share": "Share",
   "ins_consistency": "Consistency",
   "ins_no_streak": "No active streak right now",
-  "ins_streak_row": "{'one': '{} day in a row', 'other': '{} days in a row'}",
+  "ins_streak_row": {
+    "one": "{} day in a row",
+    "other": "{} days in a row"
+  },
   "ins_longest_streak": "longest streak",
   "ins_daily_semantics": "Daily watch time for the last 14 days. {n} of 14 days had viewing.",
   "ins_last_14_active": "Last 14 days · {n} active",
@@ -2528,7 +2663,10 @@ class CodegenLoader extends AssetLoader{
   "ins_empty_start": "Your viewing story starts here",
   "ins_empty_period_desc": "Try another time range to revisit your earlier viewing.",
   "ins_empty_start_desc": "Watch for at least 30 seconds and FliXtended will start building private insights about your time, titles, taste and patterns.",
-  "ins_episode_count": "{'one': '{} ep', 'other': '{} eps'}",
+  "ins_episode_count": {
+    "one": "{} ep",
+    "other": "{} eps"
+  },
   "ins_tracking_begins": "Tracking begins with your next viewing session",
   "ins_tracking_since": "Tracking since {date}",
   "ins_unit_day": "day",
@@ -2611,6 +2749,8 @@ class CodegenLoader extends AssetLoader{
   "download_choose_provider_description": "Pick the source that should provide the offline video.",
   "download_choose_resolution": "Choose resolution",
   "download_resolution_description": "Pick the quality to keep on this device.",
+  "download_choose_audio": "Choose audio language",
+  "download_choose_audio_description": "This video has more than one audio language. Pick the one to save for offline watching.",
   "download_from_provider": "Downloading from {name}",
   "quality_adaptive": "Adaptive quality, chosen by the provider",
   "quality_uhd": "Ultra HD · largest download",
@@ -2927,7 +3067,10 @@ class CodegenLoader extends AssetLoader{
   "tv_popular_on": "Popular on {service}",
   "tv_search_genre_description": "The most watched {genre} {kind}.",
   "tv_library_all": "All {kind} · {count}",
-  "tv_title_count": "{'one': '{count} title', 'other': '{count} titles'}",
+  "tv_title_count": {
+    "one": "{count} title",
+    "other": "{count} titles"
+  },
   "tv_library_description": "Every {kind} in My List, most recently added first.",
   "tv_resume_episode": "Resume {episode}",
   "tv_play_first_episode": "Play S{season}:E1",
@@ -2954,8 +3097,14 @@ class CodegenLoader extends AssetLoader{
   "tv_category_semantics": "{category} category",
   "tv_letter_channels": "Channels starting with {letter}",
   "tv_day_schedule": "{day} schedule",
-  "tv_events_count": "{'one': '{count} event', 'other': '{count} events'}",
-  "tv_channels_count": "{'one': '{count} channel', 'other': '{count} channels'}",
+  "tv_events_count": {
+    "one": "{count} event",
+    "other": "{count} events"
+  },
+  "tv_channels_count": {
+    "one": "{count} channel",
+    "other": "{count} channels"
+  },
   "tv_event_semantics": "{title}, {channels}, {state}",
   "tv_expanded": "expanded",
   "tv_collapsed": "collapsed",
@@ -2965,8 +3114,14 @@ class CodegenLoader extends AssetLoader{
   "tv_active_period_summary": "{count} active {unit} · Average active day {time}",
   "tv_busiest_period": "Busiest {unit}: {label} · {time}",
   "tv_active_days_of": "{active} of {total}",
-  "tv_days_count": "{'one': '{count} day', 'other': '{count} days'}",
-  "tv_episodes_count": "{'one': '{count} episode', 'other': '{count} episodes'}",
+  "tv_days_count": {
+    "one": "{count} day",
+    "other": "{count} days"
+  },
+  "tv_episodes_count": {
+    "one": "{count} episode",
+    "other": "{count} episodes"
+  },
   "tv_busiest_window": "Busiest window: {day} at {hour} · {time}",
   "tv_duration": "{hours}h {minutes}m",
   "tv_seconds": "{seconds}s",
@@ -2993,8 +3148,35 @@ class CodegenLoader extends AssetLoader{
   "ad_blocker_private_dns_hint": "Using Private DNS such as AdGuard DNS or NextDNS? Set Private DNS to Automatic or Off in your network settings.",
   "ad_blocker_still_detected": "Your ad blocker is still on. Turn it off, or set Private DNS to Automatic or Off, then try again.",
   "ad_blocker_retry": "I turned it off",
+  "download_audio_description": "Select the audio track to save with this video.",
+  "download_audio_loading": "Checking available audio tracks…",
+  "download_audio_error": "Could not check audio tracks. Close and try again, or choose another source.",
+  "stream_feedback_title": "How was the streaming experience?",
+  "stream_feedback_description": "Your feedback helps us improve playback.",
+  "stream_feedback_good": "Good",
+  "stream_feedback_okay": "Okay",
+  "stream_feedback_bad": "Bad",
+  "stream_feedback_issue_question": "What was the main issue? (Optional)",
+  "stream_feedback_issue_buffering": "Buffering",
+  "stream_feedback_issue_did_not_play": "Did not play",
+  "stream_feedback_issue_quality": "Video quality",
+  "stream_feedback_issue_audio": "Audio",
+  "stream_feedback_issue_subtitles": "Subtitles",
+  "stream_feedback_issue_wrong_content": "Wrong content",
+  "stream_feedback_issue_other": "Other",
+  "stream_feedback_skip": "Skip",
+  "stream_feedback_submit": "Submit",
+  "tmdb_proxy_automatic": "Automatically enabled when TMDB is unreachable. You can turn it off for this app session.",
+  "tmdb_proxy_turn_off": "On · Turn off",
+  "tmdb_proxy_auto_off": "Off · Automatic",
+  "streaming_dnd": "Do not disturb while streaming",
+  "streaming_dnd_description": "Silence notifications and hide call pop-ups while the player is open. Restores on exit or in the background. Media and alarms stay on; system exceptions may still interrupt.",
+  "streaming_dnd_access_required": "Requires Do Not Disturb access. Applies to the mobile video and live TV players on Android 10 or later.",
+  "streaming_dnd_permission_description": "Allow FlixQuest in Android’s Do Not Disturb access settings. While the player is in the foreground, FlixQuest temporarily silences notifications and hides notification and call pop-ups across the device. Your existing Do Not Disturb modes stay in place and the streaming rule ends when you leave. Media and alarms remain allowed. Emergency alerts and some system or calling-app screens may still appear.",
+  "streaming_dnd_open_settings": "Open settings",
+  "streaming_dnd_unavailable": "Could not open Do Not Disturb access settings on this device."
 };
-  static const Map<String,dynamic> _es = {
+static const Map<String,dynamic> _es = {
   "popularity_descending": "Popularidad descendiente",
   "popularity_ascending": "Popularidad ascendente",
   "average_vote_descending": "Puntuación media descendente",
@@ -3796,9 +3978,15 @@ class CodegenLoader extends AssetLoader{
   "live_sport_volleyball": "Voleibol",
   "live_sport_handball": "Balonmano",
   "live_sport_horse_racing": "Carreras de caballos",
-  "event_count": "{'one': '{} partido', 'other': '{} partidos'}",
+  "event_count": {
+    "one": "{} partido",
+    "other": "{} partidos"
+  },
   "times_in_zone": "Horas en {zone}",
-  "channel_count": "{'one': '{} canal', 'other': '{} canales'}",
+  "channel_count": {
+    "one": "{} canal",
+    "other": "{} canales"
+  },
   "channel_number": "Canal {id}",
   "share_channel": "Compartir canal",
   "remove_from_favorites": "Quitar de favoritos",
@@ -3813,7 +4001,10 @@ class CodegenLoader extends AssetLoader{
   "choose_episode": "Elige un episodio",
   "guest_stars_line": "Estrellas invitadas: {names}",
   "writers_line": "Guionistas: {names}",
-  "video_source_count": "{'one': '{} fuente', 'other': '{} fuentes'}",
+  "video_source_count": {
+    "one": "{} fuente",
+    "other": "{} fuentes"
+  },
   "never": "Nunca",
   "n_minutes_ago": "hace {n} min",
   "n_hours_ago": "hace {n} h",
@@ -3832,7 +4023,10 @@ class CodegenLoader extends AssetLoader{
   "remove": "Quitar",
   "loading_episodes": "Cargando episodios",
   "collection": "Colección",
-  "movie_count": "{'one': '{} película', 'other': '{} películas'}",
+  "movie_count": {
+    "one": "{} película",
+    "other": "{} películas"
+  },
   "ins_title": "Estadísticas de visualización",
   "ins_options": "Opciones de estadísticas",
   "ins_share_recap": "Compartir resumen",
@@ -3872,7 +4066,10 @@ class CodegenLoader extends AssetLoader{
   "ins_export_desc": "Descarga tus sesiones en JSON y CSV.",
   "ins_clear_title": "Borrar historial de visualización",
   "ins_clear_desc": "Elimina todas las sesiones locales y sincronizadas.",
-  "ins_active_days": "{'one': '{} día activo', 'other': '{} días activos'}",
+  "ins_active_days": {
+    "one": "{} día activo",
+    "other": "{} días activos"
+  },
   "ins_caption": "{period} en FliXtended: {time} de historias en {days}.",
   "ins_caption_top": " Mi título más visto fue {title}.",
   "ins_caption_copied": "Texto copiado",
@@ -3962,14 +4159,20 @@ class CodegenLoader extends AssetLoader{
   "ins_nothing_range": "Aún no hay nada registrado en este periodo.",
   "ins_timeline_summary": "Toca una barra para ver ese {unit}. El más activo fue {label} con {time}; la línea marca tu promedio de {average} en {n} {units} activos.",
   "ins_no_viewing": "Sin visualización registrada",
-  "ins_session_count": "{'one': '{} sesión', 'other': '{} sesiones'}",
+  "ins_session_count": {
+    "one": "{} sesión",
+    "other": "{} sesiones"
+  },
   "ins_bucket_share": "{share} del periodo · {sessions}",
   "ins_more_this": "+{n} más este {unit}",
   "ins_col_time": "Tiempo",
   "ins_col_share": "Porcentaje",
   "ins_consistency": "Constancia",
   "ins_no_streak": "Ahora mismo no tienes racha",
-  "ins_streak_row": "{'one': '{} día seguido', 'other': '{} días seguidos'}",
+  "ins_streak_row": {
+    "one": "{} día seguido",
+    "other": "{} días seguidos"
+  },
   "ins_longest_streak": "racha más larga",
   "ins_daily_semantics": "Tiempo visto al día en los últimos 14 días. {n} de 14 días con visualización.",
   "ins_last_14_active": "Últimos 14 días · {n} activos",
@@ -4018,7 +4221,10 @@ class CodegenLoader extends AssetLoader{
   "ins_empty_start": "Tu historia de visualización empieza aquí",
   "ins_empty_period_desc": "Prueba otro periodo para ver lo que viste antes.",
   "ins_empty_start_desc": "Mira al menos 30 segundos y FliXtended empezará a crear estadísticas privadas sobre tu tiempo, títulos, gustos y patrones.",
-  "ins_episode_count": "{'one': '{} ep.', 'other': '{} eps.'}",
+  "ins_episode_count": {
+    "one": "{} ep.",
+    "other": "{} eps."
+  },
   "ins_tracking_begins": "El registro empieza con tu próxima sesión",
   "ins_tracking_since": "Registrando desde {date}",
   "ins_unit_day": "día",
@@ -4417,7 +4623,10 @@ class CodegenLoader extends AssetLoader{
   "tv_popular_on": "Popular en {service}",
   "tv_search_genre_description": "Los títulos de {genre} más vistos en {kind}.",
   "tv_library_all": "Todo en {kind} · {count}",
-  "tv_title_count": "{'one': '{count} título', 'other': '{count} títulos'}",
+  "tv_title_count": {
+    "one": "{count} título",
+    "other": "{count} títulos"
+  },
   "tv_library_description": "Todo en {kind} de Mi lista, con lo añadido más recientemente primero.",
   "tv_resume_episode": "Continuar {episode}",
   "tv_play_first_episode": "Reproducir T{season}:E1",
@@ -4444,8 +4653,14 @@ class CodegenLoader extends AssetLoader{
   "tv_category_semantics": "Categoría {category}",
   "tv_letter_channels": "Canales que empiezan por {letter}",
   "tv_day_schedule": "Programación de {day}",
-  "tv_events_count": "{'one': '{count} evento', 'other': '{count} eventos'}",
-  "tv_channels_count": "{'one': '{count} canal', 'other': '{count} canales'}",
+  "tv_events_count": {
+    "one": "{count} evento",
+    "other": "{count} eventos"
+  },
+  "tv_channels_count": {
+    "one": "{count} canal",
+    "other": "{count} canales"
+  },
   "tv_event_semantics": "{title}, {channels}, {state}",
   "tv_expanded": "expandido",
   "tv_collapsed": "contraído",
@@ -4455,8 +4670,14 @@ class CodegenLoader extends AssetLoader{
   "tv_active_period_summary": "{count} {unit} activos · Día activo medio {time}",
   "tv_busiest_period": "{unit} con más actividad: {label} · {time}",
   "tv_active_days_of": "{active} de {total}",
-  "tv_days_count": "{'one': '{count} día', 'other': '{count} días'}",
-  "tv_episodes_count": "{'one': '{count} episodio', 'other': '{count} episodios'}",
+  "tv_days_count": {
+    "one": "{count} día",
+    "other": "{count} días"
+  },
+  "tv_episodes_count": {
+    "one": "{count} episodio",
+    "other": "{count} episodios"
+  },
   "tv_busiest_window": "Franja más activa: {day} a las {hour} · {time}",
   "tv_duration": "{hours}h {minutes}min",
   "tv_seconds": "{seconds}s",
@@ -4483,8 +4704,36 @@ class CodegenLoader extends AssetLoader{
   "ad_blocker_private_dns_hint": "¿Usas un DNS privado como AdGuard DNS o NextDNS? Configura el DNS privado en Automático o Desactivado en los ajustes de red.",
   "ad_blocker_still_detected": "Tu bloqueador de anuncios sigue activo. Desactívalo o configura el DNS privado en Automático o Desactivado y vuelve a intentarlo.",
   "ad_blocker_retry": "Ya lo desactivé",
+  "download_choose_audio": "Elegir idioma de audio",
+  "download_audio_description": "Selecciona la pista de audio que se guardará con este vídeo.",
+  "download_audio_loading": "Comprobando las pistas de audio…",
+  "download_audio_error": "No se pudieron comprobar las pistas de audio. Cierra e inténtalo de nuevo o elige otra fuente.",
+  "stream_feedback_title": "¿Cómo fue la experiencia de reproducción?",
+  "stream_feedback_description": "Tus comentarios nos ayudan a mejorar la reproducción.",
+  "stream_feedback_good": "Buena",
+  "stream_feedback_okay": "Regular",
+  "stream_feedback_bad": "Mala",
+  "stream_feedback_issue_question": "¿Cuál fue el problema principal? (Opcional)",
+  "stream_feedback_issue_buffering": "Interrupciones",
+  "stream_feedback_issue_did_not_play": "No se reprodujo",
+  "stream_feedback_issue_quality": "Calidad del vídeo",
+  "stream_feedback_issue_audio": "Audio",
+  "stream_feedback_issue_subtitles": "Subtítulos",
+  "stream_feedback_issue_wrong_content": "Contenido incorrecto",
+  "stream_feedback_issue_other": "Otro",
+  "stream_feedback_skip": "Omitir",
+  "stream_feedback_submit": "Enviar",
+  "tmdb_proxy_automatic": "Se activa automáticamente cuando no se puede acceder a TMDB. Puedes desactivarlo durante esta sesión.",
+  "tmdb_proxy_turn_off": "Activado · Desactivar",
+  "tmdb_proxy_auto_off": "Desactivado · Automático",
+  "streaming_dnd": "No molestar durante la reproducción",
+  "streaming_dnd_description": "Silencia notificaciones y oculta avisos de llamadas mientras el reproductor está abierto. Se desactiva al salir o pasar a segundo plano. El contenido y las alarmas siguen sonando; pueden intervenir excepciones del sistema.",
+  "streaming_dnd_access_required": "Requiere acceso a No molestar. Disponible en los reproductores móviles de vídeo y TV en directo con Android 10 o posterior.",
+  "streaming_dnd_permission_description": "Permite el acceso de FlixQuest a No molestar en los ajustes de Android. Con el reproductor en primer plano, FlixQuest silencia temporalmente las notificaciones y oculta los avisos de notificaciones y llamadas del dispositivo. Tus modos actuales se mantienen y la regla de reproducción termina al salir. El contenido y las alarmas siguen permitidos. Las alertas de emergencia y algunas pantallas del sistema o de llamadas pueden aparecer.",
+  "streaming_dnd_open_settings": "Abrir ajustes",
+  "streaming_dnd_unavailable": "No se pudieron abrir los ajustes de acceso a No molestar en este dispositivo."
 };
-  static const Map<String,dynamic> _hi = {
+static const Map<String,dynamic> _hi = {
   "popularity_descending": "लोकप्रियता घटती",
   "popularity_ascending": "लोकप्रियता बढ़ती",
   "average_vote_descending": "औसत रेटिंग घटती",
@@ -5286,9 +5535,15 @@ class CodegenLoader extends AssetLoader{
   "live_sport_volleyball": "वॉलीबॉल",
   "live_sport_handball": "हैंडबॉल",
   "live_sport_horse_racing": "घुड़दौड़",
-  "event_count": "{'one': '{} मैच', 'other': '{} मैच'}",
+  "event_count": {
+    "one": "{} मैच",
+    "other": "{} मैच"
+  },
   "times_in_zone": "समय {zone} में",
-  "channel_count": "{'one': '{} चैनल', 'other': '{} चैनल'}",
+  "channel_count": {
+    "one": "{} चैनल",
+    "other": "{} चैनल"
+  },
   "channel_number": "चैनल {id}",
   "share_channel": "चैनल शेयर करें",
   "remove_from_favorites": "पसंदीदा से हटाएँ",
@@ -5303,7 +5558,10 @@ class CodegenLoader extends AssetLoader{
   "choose_episode": "एपिसोड चुनें",
   "guest_stars_line": "अतिथि कलाकार: {names}",
   "writers_line": "लेखक: {names}",
-  "video_source_count": "{'one': '{} स्रोत', 'other': '{} स्रोत'}",
+  "video_source_count": {
+    "one": "{} स्रोत",
+    "other": "{} स्रोत"
+  },
   "never": "कभी नहीं",
   "n_minutes_ago": "{n} मि. पहले",
   "n_hours_ago": "{n} घं. पहले",
@@ -5322,7 +5580,10 @@ class CodegenLoader extends AssetLoader{
   "remove": "हटाएँ",
   "loading_episodes": "एपिसोड लोड हो रहे हैं",
   "collection": "कलेक्शन",
-  "movie_count": "{'one': '{} फ़िल्म', 'other': '{} फ़िल्में'}",
+  "movie_count": {
+    "one": "{} फ़िल्म",
+    "other": "{} फ़िल्में"
+  },
   "ins_title": "देखने की जानकारी",
   "ins_options": "देखने की जानकारी के विकल्प",
   "ins_share_recap": "रीकैप शेयर करें",
@@ -5362,7 +5623,10 @@ class CodegenLoader extends AssetLoader{
   "ins_export_desc": "अपने सेशन JSON और CSV में डाउनलोड करें।",
   "ins_clear_title": "देखने का इतिहास साफ़ करें",
   "ins_clear_desc": "सभी लोकल और सिंक किए गए सेशन हटाएँ।",
-  "ins_active_days": "{'one': '{} सक्रिय दिन', 'other': '{} सक्रिय दिन'}",
+  "ins_active_days": {
+    "one": "{} सक्रिय दिन",
+    "other": "{} सक्रिय दिन"
+  },
   "ins_caption": "FliXtended पर {period}: {days} में {time} की कहानियाँ।",
   "ins_caption_top": " मेरा सबसे ज़्यादा देखा गया टाइटल {title} था।",
   "ins_caption_copied": "कैप्शन कॉपी हुआ",
@@ -5452,14 +5716,20 @@ class CodegenLoader extends AssetLoader{
   "ins_nothing_range": "इस अवधि में अभी कुछ दर्ज नहीं हुआ।",
   "ins_timeline_summary": "उस {unit} के लिए किसी बार पर टैप करें। सबसे व्यस्त {label} था, {time}; लाइन {n} सक्रिय {units} में आपका औसत {average} दिखाती है।",
   "ins_no_viewing": "कोई देखना दर्ज नहीं",
-  "ins_session_count": "{'one': '{} सेशन', 'other': '{} सेशन'}",
+  "ins_session_count": {
+    "one": "{} सेशन",
+    "other": "{} सेशन"
+  },
   "ins_bucket_share": "अवधि का {share} · {sessions}",
   "ins_more_this": "इस {unit} में +{n} और",
   "ins_col_time": "समय",
   "ins_col_share": "हिस्सा",
   "ins_consistency": "निरंतरता",
   "ins_no_streak": "अभी कोई सक्रिय लकीर नहीं",
-  "ins_streak_row": "{'one': 'लगातार {} दिन', 'other': 'लगातार {} दिन'}",
+  "ins_streak_row": {
+    "one": "लगातार {} दिन",
+    "other": "लगातार {} दिन"
+  },
   "ins_longest_streak": "सबसे लंबी लकीर",
   "ins_daily_semantics": "पिछले 14 दिनों का रोज़ का देखने का समय। 14 में से {n} दिन देखा गया।",
   "ins_last_14_active": "पिछले 14 दिन · {n} सक्रिय",
@@ -5508,7 +5778,10 @@ class CodegenLoader extends AssetLoader{
   "ins_empty_start": "आपकी देखने की कहानी यहाँ से शुरू होती है",
   "ins_empty_period_desc": "पहले का देखा हुआ देखने के लिए कोई और अवधि चुनें।",
   "ins_empty_start_desc": "कम से कम 30 सेकंड देखें और FliXtended आपके समय, टाइटल, पसंद और पैटर्न की निजी जानकारी बनाना शुरू करेगा।",
-  "ins_episode_count": "{'one': '{} एपि.', 'other': '{} एपि.'}",
+  "ins_episode_count": {
+    "one": "{} एपि.",
+    "other": "{} एपि."
+  },
   "ins_tracking_begins": "ट्रैकिंग आपके अगले सेशन से शुरू होगी",
   "ins_tracking_since": "{date} से ट्रैकिंग",
   "ins_unit_day": "दिन",
@@ -5907,7 +6180,10 @@ class CodegenLoader extends AssetLoader{
   "tv_popular_on": "{service} पर लोकप्रिय",
   "tv_search_genre_description": "सबसे अधिक देखे गए {genre} {kind}।",
   "tv_library_all": "सभी {kind} · {count}",
-  "tv_title_count": "{'one': '{count} शीर्षक', 'other': '{count} शीर्षक'}",
+  "tv_title_count": {
+    "one": "{count} शीर्षक",
+    "other": "{count} शीर्षक"
+  },
   "tv_library_description": "मेरी सूची में सभी {kind}, हाल में जोड़े गए पहले।",
   "tv_resume_episode": "{episode} जारी रखें",
   "tv_play_first_episode": "सीज़न {season} एपिसोड 1 चलाएं",
@@ -5934,8 +6210,14 @@ class CodegenLoader extends AssetLoader{
   "tv_category_semantics": "{category} श्रेणी",
   "tv_letter_channels": "{letter} से शुरू होने वाले चैनल",
   "tv_day_schedule": "{day} का कार्यक्रम",
-  "tv_events_count": "{'one': '{count} इवेंट', 'other': '{count} इवेंट'}",
-  "tv_channels_count": "{'one': '{count} चैनल', 'other': '{count} चैनल'}",
+  "tv_events_count": {
+    "one": "{count} इवेंट",
+    "other": "{count} इवेंट"
+  },
+  "tv_channels_count": {
+    "one": "{count} चैनल",
+    "other": "{count} चैनल"
+  },
   "tv_event_semantics": "{title}, {channels}, {state}",
   "tv_expanded": "विस्तृत",
   "tv_collapsed": "संक्षिप्त",
@@ -5945,8 +6227,14 @@ class CodegenLoader extends AssetLoader{
   "tv_active_period_summary": "{count} सक्रिय {unit} · औसत सक्रिय दिन {time}",
   "tv_busiest_period": "सबसे सक्रिय {unit}: {label} · {time}",
   "tv_active_days_of": "{total} में से {active}",
-  "tv_days_count": "{'one': '{count} दिन', 'other': '{count} दिन'}",
-  "tv_episodes_count": "{'one': '{count} एपिसोड', 'other': '{count} एपिसोड'}",
+  "tv_days_count": {
+    "one": "{count} दिन",
+    "other": "{count} दिन"
+  },
+  "tv_episodes_count": {
+    "one": "{count} एपिसोड",
+    "other": "{count} एपिसोड"
+  },
   "tv_busiest_window": "सबसे सक्रिय समय: {day}, {hour} बजे · {time}",
   "tv_duration": "{hours}घं {minutes}मि",
   "tv_seconds": "{seconds}से",
@@ -5973,6 +6261,34 @@ class CodegenLoader extends AssetLoader{
   "ad_blocker_private_dns_hint": "क्या आप AdGuard DNS या NextDNS जैसा Private DNS इस्तेमाल करते हैं? नेटवर्क सेटिंग में Private DNS को Automatic या Off पर सेट करें।",
   "ad_blocker_still_detected": "आपका ऐड ब्लॉकर अभी भी चालू है। उसे बंद करें या Private DNS को Automatic या Off पर सेट करें, फिर दोबारा कोशिश करें।",
   "ad_blocker_retry": "मैंने बंद कर दिया",
+  "download_choose_audio": "ऑडियो भाषा चुनें",
+  "download_audio_description": "इस वीडियो के साथ सहेजने के लिए ऑडियो ट्रैक चुनें।",
+  "download_audio_loading": "उपलब्ध ऑडियो ट्रैक जाँचे जा रहे हैं…",
+  "download_audio_error": "ऑडियो ट्रैक जाँचे नहीं जा सके। बंद करके फिर से कोशिश करें या कोई अन्य स्रोत चुनें।",
+  "stream_feedback_title": "स्ट्रीमिंग का अनुभव कैसा रहा?",
+  "stream_feedback_description": "आपकी प्रतिक्रिया हमें प्लेबैक बेहतर बनाने में मदद करती है।",
+  "stream_feedback_good": "अच्छा",
+  "stream_feedback_okay": "ठीक",
+  "stream_feedback_bad": "खराब",
+  "stream_feedback_issue_question": "मुख्य समस्या क्या थी? (वैकल्पिक)",
+  "stream_feedback_issue_buffering": "बफ़रिंग",
+  "stream_feedback_issue_did_not_play": "वीडियो नहीं चला",
+  "stream_feedback_issue_quality": "वीडियो की गुणवत्ता",
+  "stream_feedback_issue_audio": "ऑडियो",
+  "stream_feedback_issue_subtitles": "सबटाइटल",
+  "stream_feedback_issue_wrong_content": "गलत सामग्री",
+  "stream_feedback_issue_other": "अन्य",
+  "stream_feedback_skip": "छोड़ें",
+  "stream_feedback_submit": "भेजें",
+  "tmdb_proxy_automatic": "TMDB उपलब्ध न होने पर अपने आप चालू होता है। आप इसे इस ऐप सत्र के लिए बंद कर सकते हैं।",
+  "tmdb_proxy_turn_off": "चालू · बंद करें",
+  "tmdb_proxy_auto_off": "बंद · स्वचालित",
+  "streaming_dnd": "स्ट्रीमिंग के दौरान परेशान न करें",
+  "streaming_dnd_description": "प्लेयर खुला रहने पर सूचनाएँ शांत करें और कॉल पॉप-अप छिपाएँ। बाहर निकलने या बैकग्राउंड में जाने पर बंद हो जाता है। मीडिया और अलार्म चालू रहते हैं; सिस्टम के अपवाद फिर भी बाधा डाल सकते हैं।",
+  "streaming_dnd_access_required": "परेशान न करें की अनुमति आवश्यक है। Android 10 या बाद के संस्करण में मोबाइल वीडियो और लाइव टीवी प्लेयर के लिए उपलब्ध है।",
+  "streaming_dnd_permission_description": "Android की परेशान न करें सेटिंग में FlixQuest को अनुमति दें। प्लेयर सामने रहने पर FlixQuest पूरे डिवाइस की सूचनाएँ अस्थायी रूप से शांत करता है और सूचना व कॉल पॉप-अप छिपाता है। आपके मौजूदा मोड बने रहते हैं और बाहर निकलने पर स्ट्रीमिंग नियम बंद हो जाता है। मीडिया और अलार्म की अनुमति बनी रहती है। आपातकालीन चेतावनियाँ और कुछ सिस्टम या कॉलिंग ऐप की स्क्रीन फिर भी दिखाई दे सकती हैं।",
+  "streaming_dnd_open_settings": "सेटिंग खोलें",
+  "streaming_dnd_unavailable": "इस डिवाइस पर परेशान न करें की अनुमति सेटिंग नहीं खुल सकी।"
 };
 static const Map<String, Map<String,dynamic>> mapLocales = {"ar": _ar, "en": _en, "es": _es, "hi": _hi};
 }

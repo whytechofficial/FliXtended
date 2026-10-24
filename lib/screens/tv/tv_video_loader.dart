@@ -322,7 +322,7 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
         if (!mounted) return;
 
         // Navigate to player with provider list for lazy loading
-        handoffLoaderToPlayer<Function>(
+        handoffLoaderToPlayer<void>(
           context,
           (context) {
             final player = PlayerOne(
@@ -355,12 +355,7 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
             );
             return widget.useTvPlayer ? TvPlayerScreen(child: player) : player;
           },
-        ).then((value) async {
-          if (value != null) {
-            Function callback = value;
-            await callback.call();
-          }
-        });
+        );
       } else {
         if (mounted) {
           _showErrorSheet(tr('tv_vid_404'));
@@ -558,28 +553,28 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
                 : 'hls';
     final requestHeaders =
         videoHeaders[quality] ?? VideoUtils.inferVideoHeaders(url) ?? const {};
-    final audioPick = await DownloadSelectionSheets.pickAudioTrack(
-      context,
-      url: url,
-      format: format,
-      headers: requestHeaders,
-    );
-    if (!mounted) return;
-    if (audioPick.cancelled) {
-      settings.analytics.trackDownload(
-        action: 'audio_selection',
-        mediaType: 'tv',
-        outcome: 'cancelled',
-        provider: providerName,
-      );
-      Navigator.pop(context, false);
-      return;
-    }
     final posterPath = widget.metadata.posterPath;
     final season = widget.metadata.seasonNumber ?? 0;
     final episode = widget.metadata.episodeNumber ?? 0;
     final subtitleTrack = _preferredSubtitle(tvVideoSubs);
     try {
+      final downloadHeaders = videoHeaders[quality] ??
+          VideoUtils.inferVideoHeaders(url) ??
+          const <String, String>{};
+      final audioSelection = await DownloadSelectionSheets.chooseAudio(
+        context,
+        tracks: OfflineDownloadService.instance.getAudioTracks(
+          url: url,
+          format: format,
+          headers: downloadHeaders,
+          maxVideoHeight: _qualityHeight(quality),
+        ),
+      );
+      if (!mounted) return;
+      if (audioSelection == null) {
+        Navigator.pop(context, false);
+        return;
+      }
       await context.read<OfflineDownloadProvider>().enqueue(
             OfflineDownloadRequest(
               id: 'tv_${widget.metadata.tvId}_s${season}_e$episode',
@@ -596,14 +591,14 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
                   ? null
                   : '${TMDB_BASE_IMAGE_URL}w500$posterPath',
               maxVideoHeight: _qualityHeight(quality),
-              headers: requestHeaders,
+              headers: downloadHeaders,
+              audioTrack: audioSelection.track,
               contentId: widget.metadata.tvId,
               seasonNumber: season,
               episodeNumber: episode,
               subtitleTrackUrl: subtitleTrack?.url,
               subtitleTrackName: subtitleTrack?.language,
               subtitleTrackHeaders: subtitleTrack?.headers ?? const {},
-              audioTrackLanguage: audioPick.language,
             ),
           );
       settings.analytics.trackDownload(

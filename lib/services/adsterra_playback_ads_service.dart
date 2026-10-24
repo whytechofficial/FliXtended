@@ -10,6 +10,7 @@ import '../provider/app_dependency_provider.dart';
 import '../widgets/adsterra_playback_ad_screen.dart';
 import 'device_presentation_service.dart';
 import 'playback_ad_input_service.dart';
+import 'playback_ad_browser_service.dart';
 
 export '../widgets/adsterra_playback_ad_screen.dart' show PlaybackAdPreload;
 
@@ -22,6 +23,7 @@ class AdsterraPlaybackAdsService {
   AdsterraPlaybackAdsService({
     Future<SharedPreferences> Function()? preferences,
     this.storeLauncher,
+    this.browserLauncher,
     this.continueTap,
     DateTime Function()? now,
   })  : _preferences = preferences ?? SharedPreferences.getInstance,
@@ -35,6 +37,7 @@ class AdsterraPlaybackAdsService {
   final Future<SharedPreferences> Function() _preferences;
   final DateTime Function() _now;
   final StoreLauncher? storeLauncher;
+  final PlaybackBrowserLauncher? browserLauncher;
   final PlaybackContinueTap? continueTap;
   final Map<String, int> _rotation = {};
   final Map<PlaybackAdStage, DateTime> _lastPopupShownAt = {};
@@ -410,6 +413,7 @@ class AdsterraPlaybackAdsService {
           placement: selectedPlacement,
           stage: stage,
           storeLauncher: storeLauncher,
+          browserLauncher: browserLauncher,
           television: tv,
           preload: prepared,
           continueTap: continueTap,
