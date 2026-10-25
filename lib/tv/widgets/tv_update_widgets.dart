@@ -56,7 +56,7 @@ class TvUpdateChangelog extends StatelessWidget {
   Widget build(BuildContext context) {
     Localizations.localeOf(context);
     final palette = TvPalette.of(context);
-    final items = AppUpdateService.changelogItems(changeLog);
+    final items = AppUpdateService.changelogEntries(changeLog);
     final more = items.length - _previewItems;
     return TvFocusable(
       semanticLabel: tr('tv_what_s_new'),
@@ -93,36 +93,52 @@ class TvUpdateChangelog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            for (final item in items.take(_previewItems))
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Container(
-                      width: 6,
-                      height: 6,
-                      margin: const EdgeInsets.only(top: 11, right: 14),
-                      decoration: BoxDecoration(
-                        color: palette.mutedText,
-                        shape: BoxShape.circle,
-                      ),
+            for (final entry in items.take(_previewItems))
+              if (entry.heading)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Text(
+                    entry.text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: palette.foreground,
+                      fontFamily: 'FigtreeBold',
+                      fontSize: 19,
+                      height: 1.45,
                     ),
-                    Expanded(
-                      child: Text(
-                        item,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        '-',
                         style: TextStyle(
                           color: palette.mutedText,
                           fontSize: 19,
                           height: 1.45,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          entry.text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: palette.mutedText,
+                            fontSize: 19,
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             if (more > 0) ...<Widget>[
               const SizedBox(height: 8),
               Text(
@@ -233,13 +249,6 @@ class TvUpdateLayout extends StatelessWidget {
 /// Release notes are a document, with remote scrolling independent of buttons.
 /// Splits the remote changelog into one bullet item per line, stripping any
 /// list markers the remote string already carries.
-List<String> _changelogItems(String changeLog) => changeLog
-    .split('\n')
-    .map((line) =>
-        line.trim().replaceFirst(RegExp(r'^(?:#+|[-*•·]|\d+[.)])\s+'), ''))
-    .where((line) => line.isNotEmpty)
-    .toList(growable: false);
-
 class TvChangelogView extends StatefulWidget {
   const TvChangelogView({required this.changeLog, super.key});
   final String changeLog;
@@ -347,34 +356,46 @@ class _TvChangelogViewState extends State<TvChangelogView> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.start,
                                   children: [
-                                    for (final item in _changelogItems(
-                                        widget.changeLog))
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                            bottom: 14),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text('•  ',
-                                                style: TextStyle(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .primary,
-                                                    fontSize: 21,
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                            Expanded(
-                                              child: Text(item,
+                                    for (final entry in AppUpdateService
+                                        .changelogEntries(widget.changeLog))
+                                      if (entry.heading)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 8, top: 10),
+                                          child: Text(entry.text,
+                                              style: TextStyle(
+                                                  color: palette.foreground,
+                                                  fontFamily: 'FigtreeBold',
+                                                  fontSize: 21,
+                                                  height: 1.6)),
+                                        )
+                                      else
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 14),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text('-  ',
                                                   style: TextStyle(
-                                                      color: palette
-                                                          .foreground,
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .primary,
                                                       fontSize: 21,
-                                                      height: 1.6)),
-                                            ),
-                                          ],
+                                                      fontWeight:
+                                                          FontWeight.bold)),
+                                              Expanded(
+                                                child: Text(entry.text,
+                                                    style: TextStyle(
+                                                        color: palette
+                                                            .foreground,
+                                                        fontSize: 21,
+                                                        height: 1.6)),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
                                   ],
                                 ),
                               ))),
