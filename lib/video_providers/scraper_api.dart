@@ -151,7 +151,9 @@ class ScraperApi {
       _logResponse(uri, response);
       final body = _decodeObject(response.data ?? '');
       if ((response.statusCode ?? 0) < 200 ||
-          (response.statusCode ?? 0) >= 300) return null;
+          (response.statusCode ?? 0) >= 300) {
+        return null;
+      }
       if (body['success'] != true) return null;
       return StreamSizeEstimate.fromJson(body);
     } catch (_) {
@@ -223,20 +225,18 @@ class ScraperApi {
     Map<String, String> queryParameters, {
     bool full = false,
   }) async {
-    try {
-      if (full) {
-        final result =
-            await _fetchStream(path, {...queryParameters, 'full': 'true'});
-        if (!_isFullCollectionDisabled(result)) return result;
-        if (kDebugMode) {
-          debugPrint(
-            '[ScraperApi] Full collection is disabled for $path '
-            '(provider=${queryParameters['provider']}); retrying without full',
-          );
-        }
+    if (full) {
+      final result =
+          await _fetchStream(path, {...queryParameters, 'full': 'true'});
+      if (!_isFullCollectionDisabled(result)) return result;
+      if (kDebugMode) {
+        debugPrint(
+          '[ScraperApi] Full collection is disabled for $path '
+          '(provider=${queryParameters['provider']}); retrying without full',
+        );
       }
-      return await _fetchStream(path, queryParameters);
     }
+    return await _fetchStream(path, queryParameters);
   }
 
   static bool _isFullCollectionDisabled(ProviderLoadResult result) =>
@@ -248,23 +248,20 @@ class ScraperApi {
     String path,
     Map<String, String> queryParameters,
   ) async {
-    try {
-      final result = await _attemptLoad(path, queryParameters);
-      // Beamlak's server disabled full stream collection ("Full stream
-      // collection is disabled"). Downloads request full=true, so fall back
-      // to the first working server instead of failing every scraper
-      // provider. The client must stay open across both attempts, so it is
-      // closed here — not inside _attemptLoad.
-      if (!result.success &&
-          queryParameters['full'] == 'true' &&
-          (result.errorMessage ?? '')
-              .contains('Full stream collection is disabled')) {
-        final fallbackParams = Map<String, String>.from(queryParameters)
-          ..remove('full');
-        return await _attemptLoad(path, fallbackParams);
-      }
-      return result;
+    final result = await _attemptLoad(path, queryParameters);
+    // Beamlak's server disabled full stream collection ("Full stream
+    // collection is disabled"). Downloads request full=true, so fall back
+    // to the first working server instead of failing every scraper
+    // provider.
+    if (!result.success &&
+        queryParameters['full'] == 'true' &&
+        (result.errorMessage ?? '')
+            .contains('Full stream collection is disabled')) {
+      final fallbackParams = Map<String, String>.from(queryParameters)
+        ..remove('full');
+      return await _attemptLoad(path, fallbackParams);
     }
+    return result;
   }
 
   Future<ProviderLoadResult> _attemptLoad(
