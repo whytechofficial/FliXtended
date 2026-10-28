@@ -9,6 +9,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.DataSourceInputStream
 import androidx.media3.datasource.DataSpec
@@ -28,6 +29,7 @@ import androidx.media3.exoplayer.offline.DownloaderFactory
 import androidx.media3.exoplayer.offline.ProgressiveDownloader
 import androidx.media3.exoplayer.scheduler.Requirements
 import org.json.JSONObject
+import uz.shs.better_player_plus.DisguisedSegmentDataSource
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ExecutorService
@@ -368,6 +370,10 @@ class StreamDownloadStore private constructor(context: Context) {
                 .setAllowCrossProtocolRedirects(true)
                 .setUserAgent("FlixQuest/4.0")
                 .setDefaultRequestProperties(headers)
+
+        /** HLS segments can arrive hidden in images; unwrap them before caching, as the player does. */
+        fun mediaFactory(mimeType: String?, http: DataSource.Factory): DataSource.Factory =
+            if (mimeType == MimeTypes.APPLICATION_M3U8) DisguisedSegmentDataSource.Factory(http) else http
     }
 }
 
@@ -378,8 +384,11 @@ private class HeaderAwareDownloaderFactory(
 ) : DownloaderFactory {
     override fun createDownloader(request: DownloadRequest): Downloader {
         val metadata = StreamDownloadStore.requestMetadata(request)
-        val upstream = StreamDownloadStore.httpFactory(
-            StreamDownloadStore.metadataHeaders(metadata),
+        val upstream = StreamDownloadStore.mediaFactory(
+            request.mimeType,
+            StreamDownloadStore.httpFactory(
+                StreamDownloadStore.metadataHeaders(metadata),
+            ),
         )
         val cacheFactory = CacheDataSource.Factory()
             .setCache(cache)
