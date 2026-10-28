@@ -3550,13 +3550,10 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     final url = sources[resolution];
     if (url == null) return;
     final declaredFormat = formats[resolution];
-    final format = declaredFormat == BetterPlayerVideoFormat.dash
-        ? 'dash'
-        : declaredFormat == BetterPlayerVideoFormat.hls
-            ? 'hls'
-            : url.toLowerCase().contains('.mpd')
-                ? 'dash'
-                : 'hls';
+    final format = VideoUtils.inferDownloadFormat(
+      declaredFormat: declaredFormat,
+      url: url,
+    );
     final movie = widget.movieMetadata;
     final episode = widget.tvMetadata;
     final isMovie = widget.mediaType == MediaType.movie;
@@ -3569,16 +3566,20 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       final downloadHeaders = headers[resolution] ??
           VideoUtils.inferVideoHeaders(url) ??
           const <String, String>{};
-      final audioSelection = await DownloadSelectionSheets.chooseAudio(
-        context,
-        tracks: OfflineDownloadService.instance.getAudioTracks(
-          url: url,
-          format: format,
-          headers: downloadHeaders,
-          maxVideoHeight: _downloadResolutionHeight(resolution),
-        ),
-        inPlayer: true,
-      );
+      // Progressive files have their audio muxed in: no manifest to inspect
+      // and no track to choose, so skip the sheet and keep the default.
+      final audioSelection = format == 'progressive'
+          ? const DownloadAudioSelection(null)
+          : await DownloadSelectionSheets.chooseAudio(
+              context,
+              tracks: OfflineDownloadService.instance.getAudioTracks(
+                url: url,
+                format: format,
+                headers: downloadHeaders,
+                maxVideoHeight: _downloadResolutionHeight(resolution),
+              ),
+              inPlayer: true,
+            );
       if (!mounted) return;
       if (audioSelection == null) {
         return;
