@@ -459,6 +459,29 @@ class SettingsProvider with ChangeNotifier {
   String? getLastTvProvider(int tvId) =>
       _settingsPreferences.getLastTvProvider(tvId);
 
+  /// Remembers [providerCode] as the preferred provider for the movie
+  /// [movieId], so reopening it starts there instead of at the top of the
+  /// provider order. Mirrors the TV-series sticky.
+  Future<void> setLastMovieProvider(int movieId, String providerCode) =>
+      _settingsPreferences.setLastMovieProvider(movieId, providerCode);
+
+  String? getLastMovieProvider(int movieId) =>
+      _settingsPreferences.getLastMovieProvider(movieId);
+
+  /// Saves the offline playback position for a download, in milliseconds.
+  Future<void> setOfflineResumePosition(
+          String downloadId, int positionMs) =>
+      _settingsPreferences.setOfflineResumePosition(downloadId, positionMs);
+
+  /// Returns the saved offline playback position for a download, in
+  /// milliseconds, or null when there is nothing to resume.
+  int? getOfflineResumePosition(String downloadId) =>
+      _settingsPreferences.getOfflineResumePosition(downloadId);
+
+  /// Discards the saved offline playback position for a download.
+  Future<void> clearOfflineResumePosition(String downloadId) =>
+      _settingsPreferences.clearOfflineResumePosition(downloadId);
+
   bool _sameOrder(List<String> left, List<String> right) {
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index++) {

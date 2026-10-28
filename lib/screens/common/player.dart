@@ -2791,6 +2791,12 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         if (widget.mediaType == MediaType.tvShow && tvId != null) {
           unawaited(settings.setLastTvProvider(tvId, providerCode));
         }
+        // Same for movies: reopening the movie starts on the provider the
+        // user picked, instead of restarting from the top of the order.
+        final movieId = widget.movieMetadata?.movieId;
+        if (widget.mediaType == MediaType.movie && movieId != null) {
+          unawaited(settings.setLastMovieProvider(movieId, providerCode));
+        }
       }
       settings.analytics.trackProviderAttempt(
         mediaType: _analyticsMediaType,

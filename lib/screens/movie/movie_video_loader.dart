@@ -142,6 +142,22 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
       debugPrint('Unable to load scraper providers: $error');
     }
     final orderedProviders = settings.orderStreamProviders(providers);
+    // Sticky provider: when the user picked a provider for this movie
+    // before, reopening it starts the race there instead of from the
+    // top of the order. If it has no streams, the race falls through to
+    // the normal order.
+    final movieId = _metadata.movieId;
+    if (movieId != null) {
+      final sticky = settings.getLastMovieProvider(movieId);
+      if (sticky != null) {
+        final stickyIndex =
+            orderedProviders.indexWhere((p) => p.codeName == sticky);
+        if (stickyIndex > 0) {
+          final provider = orderedProviders.removeAt(stickyIndex);
+          orderedProviders.insert(0, provider);
+        }
+      }
+    }
     if (!mounted) return;
     setState(() {
       videoProviders = orderedProviders;
