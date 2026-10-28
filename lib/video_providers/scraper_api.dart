@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
+import '../core/cache/cache_policies.dart';
+import '../core/cache/cache_policy.dart';
+import '../core/network/network_runtime.dart';
 import '../models/external_subtitles.dart';
 import '../models/banner_ad.dart';
 import 'common.dart';
@@ -15,13 +18,10 @@ import 'names.dart';
 /// can then be handed directly to Better Player without exposing provider
 /// headers or anti-hotlink details in the app.
 class ScraperApi {
-  ScraperApi(this.baseUrl, {http.Client? client})
-      : _client = client ?? http.Client(),
-        _ownsClient = client == null;
+  ScraperApi(this.baseUrl, {Dio? dio}) : _dio = dio ?? NetworkRuntime.publicDio;
 
   final String baseUrl;
-  final http.Client _client;
-  final bool _ownsClient;
+  final Dio _dio;
 
   Future<List<VideoProvider>> getProviders() async {
     try {
@@ -29,12 +29,15 @@ class ScraperApi {
       _logRequest(uri);
       final response = await _get(uri);
       _logResponse(uri, response);
-      final body = _decodeObject(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ScraperApiException(_messageFrom(body, response.statusCode));
+      final body = _decodeObject(response.data ?? '');
+      if ((response.statusCode ?? 0) < 200 ||
+          (response.statusCode ?? 0) >= 300) {
+        throw ScraperApiException(
+            _messageFrom(body, (response.statusCode ?? 0)));
       }
       if (body['success'] != true) {
-        throw ScraperApiException(_messageFrom(body, response.statusCode));
+        throw ScraperApiException(
+            _messageFrom(body, (response.statusCode ?? 0)));
       }
 
       final providers = body['providers'];
@@ -53,8 +56,8 @@ class ScraperApi {
           )
           .where((provider) => provider.apiId?.isNotEmpty == true)
           .toList(growable: false);
-    } finally {
-      if (_ownsClient) _client.close();
+    } on DioException catch (error) {
+      throw ScraperApiException(_dioMessage(error));
     }
   }
 
@@ -62,12 +65,13 @@ class ScraperApi {
     try {
       final uri = _endpoint('/ads');
       final response = await _get(uri, timeout: const Duration(seconds: 10));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
+      if ((response.statusCode ?? 0) < 200 ||
+          (response.statusCode ?? 0) >= 300) {
         return const [];
       }
       _logRequest(uri);
       _logResponse(uri, response);
-      final body = _decodeObject(response.body);
+      final body = _decodeObject(response.data ?? '');
       if (body['success'] != true || body['ads'] is! List) return const [];
       return (body['ads'] as List)
           .whereType<Map>()
@@ -76,8 +80,6 @@ class ScraperApi {
           .toList(growable: false);
     } catch (_) {
       return const [];
-    } finally {
-      if (_ownsClient) _client.close();
     }
   }
 
@@ -87,17 +89,20 @@ class ScraperApi {
       _logRequest(uri);
       final response = await _get(uri);
       _logResponse(uri, response);
-      final body = _decodeObject(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ScraperApiException(_messageFrom(body, response.statusCode));
+      final body = _decodeObject(response.data ?? '');
+      if ((response.statusCode ?? 0) < 200 ||
+          (response.statusCode ?? 0) >= 300) {
+        throw ScraperApiException(
+            _messageFrom(body, (response.statusCode ?? 0)));
       }
       if (body['success'] != true) {
-        throw ScraperApiException(_messageFrom(body, response.statusCode));
+        throw ScraperApiException(
+            _messageFrom(body, (response.statusCode ?? 0)));
       }
 
       return ProviderHealthSnapshot.fromJson(body);
-    } finally {
-      if (_ownsClient) _client.close();
+    } on DioException catch (error) {
+      throw ScraperApiException(_dioMessage(error));
     }
   }
 
@@ -144,14 +149,13 @@ class ScraperApi {
         timeout: const Duration(seconds: 10),
       );
       _logResponse(uri, response);
-      final body = _decodeObject(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300) return null;
+      final body = _decodeObject(response.data ?? '');
+      if ((response.statusCode ?? 0) < 200 ||
+          (response.statusCode ?? 0) >= 300) return null;
       if (body['success'] != true) return null;
       return StreamSizeEstimate.fromJson(body);
     } catch (_) {
       return null;
-    } finally {
-      if (_ownsClient) _client.close();
     }
   }
 
@@ -172,13 +176,17 @@ class ScraperApi {
       });
       _logRequest(uri);
       final response = await _get(uri, timeout: const Duration(seconds: 45));
-      _logResponseSummary(uri, response, '${response.body.length} bytes');
-      final body = _decodeObject(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ScraperApiException(_messageFrom(body, response.statusCode));
+      _logResponseSummary(
+          uri, response, '${(response.data ?? '').length} bytes');
+      final body = _decodeObject(response.data ?? '');
+      if ((response.statusCode ?? 0) < 200 ||
+          (response.statusCode ?? 0) >= 300) {
+        throw ScraperApiException(
+            _messageFrom(body, (response.statusCode ?? 0)));
       }
       if (body['success'] != true) {
-        throw ScraperApiException(_messageFrom(body, response.statusCode));
+        throw ScraperApiException(
+            _messageFrom(body, (response.statusCode ?? 0)));
       }
 
       final subtitles = body['subtitles'];
@@ -192,8 +200,8 @@ class ScraperApi {
           )
           .where((subtitle) => subtitle.url.isNotEmpty)
           .toList(growable: false);
-    } finally {
-      if (_ownsClient) _client.close();
+    } on DioException catch (error) {
+      throw ScraperApiException(_dioMessage(error));
     }
   }
 
@@ -228,8 +236,6 @@ class ScraperApi {
         }
       }
       return await _fetchStream(path, queryParameters);
-    } finally {
-      if (_ownsClient) _client.close();
     }
   }
 
@@ -258,8 +264,6 @@ class ScraperApi {
         return await _attemptLoad(path, fallbackParams);
       }
       return result;
-    } finally {
-      if (_ownsClient) _client.close();
     }
   }
 
@@ -272,15 +276,16 @@ class ScraperApi {
       _logRequest(uri);
       final response = await _get(uri, timeout: const Duration(minutes: 1));
       _logResponse(uri, response);
-      final body = _decodeObject(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeObject(response.data ?? '');
+      if ((response.statusCode ?? 0) < 200 ||
+          (response.statusCode ?? 0) >= 300) {
         return ProviderLoadResult(
-          errorMessage: _messageFrom(body, response.statusCode),
+          errorMessage: _messageFrom(body, (response.statusCode ?? 0)),
         );
       }
       if (body['success'] != true) {
         return ProviderLoadResult(
-          errorMessage: _messageFrom(body, response.statusCode),
+          errorMessage: _messageFrom(body, (response.statusCode ?? 0)),
         );
       }
 
@@ -329,7 +334,7 @@ class ScraperApi {
 
       if (links.isEmpty) {
         return ProviderLoadResult(
-          errorMessage: _messageFrom(body, response.statusCode),
+          errorMessage: _messageFrom(body, (response.statusCode ?? 0)),
         );
       }
 
@@ -359,30 +364,48 @@ class ScraperApi {
     } on TimeoutException {
       return const ProviderLoadResult(
           errorMessage: 'Scraper request timed out');
+    } on DioException catch (error) {
+      final timedOut = [
+        DioExceptionType.connectionTimeout,
+        DioExceptionType.sendTimeout,
+        DioExceptionType.receiveTimeout
+      ].contains(error.type);
+      return ProviderLoadResult(
+          errorMessage:
+              timedOut ? 'Scraper request timed out' : _dioMessage(error));
     } catch (error) {
       return ProviderLoadResult(errorMessage: error.toString());
     }
   }
 
-  Future<http.Response> _get(
+  Future<Response<String>> _get(
     Uri uri, {
     Duration timeout = const Duration(seconds: 30),
   }) {
-    return _client.get(uri).timeout(timeout);
+    return _dio.get<String>(uri.toString(),
+        options: Options(
+          responseType: ResponseType.plain,
+          receiveTimeout: timeout,
+          extra: {
+            'cacheScope': 'scraper',
+            'cachePolicy': CachePolicies.forUrl(uri, scope: 'scraper')
+          },
+        ));
   }
 
-  Future<http.Response> _post(
+  Future<Response<String>> _post(
     Uri uri,
     Map<String, dynamic> body, {
     Duration timeout = const Duration(seconds: 30),
   }) {
-    return _client
-        .post(
-          uri,
-          headers: const {'content-type': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .timeout(timeout);
+    return _dio.post<String>(uri.toString(),
+        data: body,
+        options: Options(
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.plain,
+          receiveTimeout: timeout,
+          extra: {'cachePolicy': CachePolicy.noStore},
+        ));
   }
 
   /// Downloads a subtitle file's text so the player can use it directly
@@ -394,18 +417,21 @@ class ScraperApi {
     Map<String, String>? headers,
   ) async {
     try {
-      final response = await _client
-          .get(Uri.parse(url), headers: headers)
-          .timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200 || response.body.isEmpty) return null;
-      final head = response.body.length > 200
-          ? response.body.substring(0, 200)
-          : response.body;
+      final response = await _dio.get<String>(url,
+          options: Options(
+            responseType: ResponseType.plain,
+            receiveTimeout: const Duration(seconds: 15),
+            headers: headers,
+          ));
+      final body = response.data ?? '';
+      if (response.statusCode != 200 || body.isEmpty) return null;
+      final head =
+          body.length > 200 ? body.substring(0, 200) : body;
       final trimmed = head.trimLeft().toLowerCase();
       if (trimmed.startsWith('<html') || trimmed.startsWith('<!doctype')) {
         return null;
       }
-      return response.body;
+      return body;
     } catch (_) {
       return null;
     }
@@ -416,16 +442,30 @@ class ScraperApi {
     debugPrint('[ScraperApi] $method $uri');
   }
 
-  void _logResponse(Uri uri, http.Response response) {
+  void _logResponse(Uri uri, Response<String> response) {
     if (!kDebugMode) return;
     debugPrint(
-      '[ScraperApi] RESPONSE ${response.statusCode} $uri\n${response.body}',
+      '[ScraperApi] RESPONSE ${response.statusCode} $uri\n${response.data ?? ''}',
     );
   }
 
-  void _logResponseSummary(Uri uri, http.Response response, String summary) {
+  void _logResponseSummary(
+      Uri uri, Response<String> response, String summary) {
     if (!kDebugMode) return;
-    debugPrint('[ScraperApi] RESPONSE ${response.statusCode} $uri ($summary)');
+    debugPrint(
+        '[ScraperApi] RESPONSE ${response.statusCode} $uri ($summary)');
+  }
+
+  String _dioMessage(DioException error) {
+    final response = error.response;
+    if (response == null) return 'Scraper service is unavailable';
+    final raw = response.data;
+    final body = raw is String
+        ? _decodeObject(raw)
+        : raw is Map<String, dynamic>
+            ? raw
+            : const <String, dynamic>{};
+    return _messageFrom(body, response.statusCode ?? 0);
   }
 
   Uri _endpoint(String path, [Map<String, String>? queryParameters]) {
