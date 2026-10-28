@@ -82,7 +82,11 @@ class StreamDownloadStore private constructor(context: Context) {
             override fun onPrepared(helper: DownloadHelper, tracksInfoAvailable: Boolean) {
                 try {
                     val selection = arguments["audioTrack"] as? Map<*, *>
-                    if (selection != null) {
+                    // Progressive files have their audio muxed in: there are
+                    // no manifest track groups to override, so a selection
+                    // here can only fail preparation. Dart already passes
+                    // null for progressive; this guards any other caller.
+                    if (selection != null && format.lowercase() != "progressive") {
                         check(tracksInfoAvailable) { "Audio track information is unavailable." }
                         for (period in 0 until helper.periodCount) {
                             val override = DownloadAudioTracks.findOverride(helper.getTracks(period), selection)
@@ -207,9 +211,13 @@ class StreamDownloadStore private constructor(context: Context) {
     }
 
     private fun createHelper(arguments: Map<*, *>, id: String, url: String, format: String): DownloadHelper {
+        // Progressive is a single file (e.g. Netmirror's signed MP4). No
+        // mime type is set: Media3 infers a progressive helper from the URL,
+        // which also covers signed URLs that carry no extension.
         val mimeType = when (format.lowercase()) {
             "hls" -> MimeTypes.APPLICATION_M3U8
             "dash" -> MimeTypes.APPLICATION_MPD
+            "progressive" -> null
             else -> {
                 throw IllegalArgumentException("Unsupported stream format: $format")
             }
