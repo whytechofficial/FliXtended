@@ -107,4 +107,26 @@ class AppUpdateService {
           line.trim().replaceFirst(RegExp(r'^(?:#+|[-*•·]|\d+[.)])\s+'), ''))
       .where((line) => line.isNotEmpty)
       .toList(growable: false);
+
+  /// Changelog lines with their kind preserved, so headings can render as
+  /// headings instead of bullet lines. Headings are lines starting with '#'.
+  static List<({bool heading, String text})> changelogEntries(
+    String changeLog,
+  ) =>
+      changeLog
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty)
+          .map((line) {
+            final isHeading = line.startsWith('#');
+            return (
+              heading: isHeading,
+              text: line.replaceFirst(
+                RegExp(r'^(?:#+|[-*•·]|\d+[.)])\s+'),
+                '',
+              ),
+            );
+          })
+          .where((entry) => entry.text.isNotEmpty)
+          .toList(growable: false);
 }

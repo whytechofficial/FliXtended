@@ -544,13 +544,10 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
     }
     final url = sources[quality]!;
     final declaredFormat = videoFormats[quality];
-    final format = declaredFormat == BetterPlayerVideoFormat.dash
-        ? 'dash'
-        : declaredFormat == BetterPlayerVideoFormat.hls
-            ? 'hls'
-            : url.toLowerCase().contains('.mpd')
-                ? 'dash'
-                : 'hls';
+    final format = VideoUtils.inferDownloadFormat(
+      declaredFormat: declaredFormat,
+      url: url,
+    );
     final posterPath = widget.metadata.posterPath;
     final season = widget.metadata.seasonNumber ?? 0;
     final episode = widget.metadata.episodeNumber ?? 0;
@@ -559,15 +556,19 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
       final downloadHeaders = videoHeaders[quality] ??
           VideoUtils.inferVideoHeaders(url) ??
           const <String, String>{};
-      final audioSelection = await DownloadSelectionSheets.chooseAudio(
-        context,
-        tracks: OfflineDownloadService.instance.getAudioTracks(
-          url: url,
-          format: format,
-          headers: downloadHeaders,
-          maxVideoHeight: _qualityHeight(quality),
-        ),
-      );
+      // Progressive files have their audio muxed in: no manifest to inspect
+      // and no track to choose, so skip the sheet and keep the default.
+      final audioSelection = format == 'progressive'
+          ? const DownloadAudioSelection(null)
+          : await DownloadSelectionSheets.chooseAudio(
+              context,
+              tracks: OfflineDownloadService.instance.getAudioTracks(
+                url: url,
+                format: format,
+                headers: downloadHeaders,
+                maxVideoHeight: _qualityHeight(quality),
+              ),
+            );
       if (!mounted) return;
       if (audioSelection == null) {
         Navigator.pop(context, false);

@@ -8,6 +8,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../functions/language_names.dart';
+import '../../functions/offline_resume.dart';
 import '../../functions/player_subtitle_configuration.dart';
 import '../../models/offline_download.dart';
 import '../../models/movie_stream_metadata.dart';
@@ -40,6 +41,7 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
   late final BetterPlayerController _controller;
   final GlobalKey _playerKey = GlobalKey();
   var _initialized = false;
+  late final SettingsProvider _settings;
   late final WellnessPlaybackTracker _wellnessTracker;
   late final String _wellnessSessionId;
   bool _completed = false;
@@ -64,12 +66,17 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
     _initialized = true;
     final accent = Theme.of(context).primaryColor;
     final settings = context.read<SettingsProvider>();
+    _settings = settings;
     final controls = BetterPlayerControlsConfiguration(
-      gestureConfiguration: const BetterPlayerGestureConfiguration(
+      gestureConfiguration: BetterPlayerGestureConfiguration(
         enableVolumeSwipe: true,
         enableBrightnessSwipe: true,
         enableSeekSwipe: true,
         enableDoubleTapSeek: true,
+        fastHoldSpeed:
+            settings.fastHoldSpeed > 0 ? settings.fastHoldSpeed : null,
+        slowHoldSpeed:
+            settings.slowHoldSpeed > 0 ? settings.slowHoldSpeed : null,
         volumeSwipeSensitivity: 0.5,
         brightnessSwipeSensitivity: 0.5,
         seekSwipeSensitivity: 1.0,
@@ -148,6 +155,9 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
         ? 'Auto'
         : widget.download.quality.trim();
     final offlineUrl = 'flixquest-offline://${widget.download.id}';
+    // Resume where the viewer left off, if a position was saved for this
+    // download. The player seeks once initialized; null starts at 0.
+    final resumeMs = settings.getOfflineResumePosition(widget.download.id);
     _controller.setupDataSource(
       BetterPlayerDataSource(
         BetterPlayerDataSourceType.network,
@@ -170,6 +180,32 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
               ]
             : const [],
       ),
+      initialPosition:
+          resumeMs != null ? Duration(milliseconds: resumeMs) : null,
+    );
+  }
+
+  /// Saves the current playback position for this download, so reopening
+  /// it resumes where the viewer left off. A finished title (past 85%,
+  /// mirroring the streaming rule) clears the saved position instead.
+  /// Nothing is touched before the player initializes, so a spurious
+  /// early event can never wipe a saved position.
+  Future<void> _saveResumePosition() async {
+    final value = _controller.videoPlayerController?.value;
+    if (value == null || !value.initialized) return;
+    final positionMs = value.position.inMilliseconds;
+    final durationMs = value.duration?.inMilliseconds ?? 0;
+    if (positionMs <= 0 ||
+        shouldClearOfflineResume(
+          positionMs: positionMs,
+          durationMs: durationMs,
+        )) {
+      await _settings.clearOfflineResumePosition(widget.download.id);
+      return;
+    }
+    await _settings.setOfflineResumePosition(
+      widget.download.id,
+      positionMs,
     );
   }
 
@@ -178,6 +214,8 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
       case BetterPlayerEventType.play:
         _wellnessTracker.play();
       case BetterPlayerEventType.pause:
+        _wellnessTracker.pause();
+        unawaited(_saveResumePosition());
       case BetterPlayerEventType.bufferingStart:
         _wellnessTracker.pause();
       case BetterPlayerEventType.bufferingEnd:
@@ -187,6 +225,7 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
       case BetterPlayerEventType.finished:
         _completed = true;
         _wellnessTracker.pause();
+        unawaited(_settings.clearOfflineResumePosition(widget.download.id));
         unawaited(_persistWellnessSession(syncImmediately: true));
       default:
         break;
@@ -284,6 +323,9 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
     if (_initialized) {
       _controller.removeEventsListener(_onPlayerEvent);
       _wellnessTracker.pause();
+      // Leaving the player saves the spot; the position is read before
+      // the controller is disposed, like the wellness session below.
+      unawaited(_saveResumePosition());
       unawaited(_persistWellnessSession(syncImmediately: true));
       _controller.dispose();
     }

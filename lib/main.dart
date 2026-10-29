@@ -134,10 +134,12 @@ Future<DevicePresentation> appInitialize({
     DeviceOrientation.landscapeRight,
   ]);
 
-  // ByteData data =
-  //     await PlatformAssetBundle().load('assets/ca/lets-encrypt-r3.pem');
-  // SecurityContext.defaultContext
-  //     .setTrustedCertificatesBytes(data.buffer.asUint8List());
+  // Android 7.0 predates ISRG Root X1, which anchors the API's certificate.
+  try {
+    final root = await rootBundle.load('assets/ca/isrg-root-x1.pem');
+    SecurityContext.defaultContext
+        .setTrustedCertificatesBytes(root.buffer.asUint8List());
+  } catch (_) {/* The platform already trusts it. */}
   await dotenv.load(fileName: '.env');
   await EasyLocalization.ensureInitialized();
   // Seed the shared version with the installed build so any synchronous reader
@@ -176,6 +178,7 @@ Future<DevicePresentation> appInitialize({
   await settingsProvider.getCurrentImageQuality();
   await settingsProvider.getCurrentWatchCountry();
   await settingsProvider.getSeekDuration();
+  await settingsProvider.getHoldSpeeds();
   await settingsProvider.getMaxBufferDuration();
   await settingsProvider.getVideoResolution();
   await settingsProvider.getSubtitleLanguage();
@@ -212,7 +215,7 @@ Future<DevicePresentation> appInitialize({
     await wp.initialize().timeout(const Duration(seconds: 15));
   } catch (_) {}
   await appDependencyProvider.getFlixQuestLogo();
-  await appDependencyProvider.getOccasionalTheme();
+  await appDependencyProvider.getOccasionalTheme(preserveSelection: true);
   await appDependencyProvider.getAmbientMode();
   await appDependencyProvider.getFQUrl();
   await appDependencyProvider.getTmdbProxy();

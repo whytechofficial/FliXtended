@@ -218,6 +218,32 @@ class VideoUtils {
     };
   }
 
+  /// Classify a stream URL for download: `'dash'`, `'hls'`, or
+  /// `'progressive'`.
+  ///
+  /// A declared manifest format wins, then a manifest extension in the URL.
+  /// Anything else is a single-file progressive stream: Netmirror's signed
+  /// MP4 URLs, for example, carry no manifest and often no extension at all,
+  /// and previously fell through to `'hls'`, which made the download
+  /// pipeline parse an MP4 as an HLS manifest and fail. Progressive files
+  /// have their audio muxed in, so callers must skip the audio-track sheet
+  /// for them and pass no audio selection.
+  static String inferDownloadFormat({
+    required BetterPlayerVideoFormat? declaredFormat,
+    required String url,
+  }) {
+    final lower = url.toLowerCase();
+    if (declaredFormat == BetterPlayerVideoFormat.dash ||
+        lower.contains('.mpd')) {
+      return 'dash';
+    }
+    if (declaredFormat == BetterPlayerVideoFormat.hls ||
+        lower.contains('.m3u8')) {
+      return 'hls';
+    }
+    return 'progressive';
+  }
+
   /// Process VTT file timestamps to fix formatting issues
   static String processVttFileTimestamps(String vttContent) {
     final lines = vttContent.split('\n');

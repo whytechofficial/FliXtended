@@ -208,7 +208,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
     final downloadUrl = _downloadUrl(config);
     return Scaffold(
       backgroundColor: AppPalette.of(context).page,
-      appBar: PageAppBar(title: tr('check_for_update')),
+      appBar: PageAppBar(title: tr('check_for_update'), contentWidth: 600),
       body: SkeletonSwitcher(
         loading: _error == null && _packageInfo == null,
         alignment: Alignment.topCenter,
@@ -572,7 +572,7 @@ class _ChangelogSheet extends StatelessWidget {
     Localizations.localeOf(context);
     final palette = AppPalette.of(context);
     final gutter = AppSpace.gutter(context);
-    final items = AppUpdateService.changelogItems(changeLog);
+    final entries = AppUpdateService.changelogEntries(changeLog);
     final version = this.version;
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -598,35 +598,54 @@ class _ChangelogSheet extends StatelessWidget {
                 style: AppType.body.copyWith(color: palette.mutedText),
               ),
             ),
-          for (final item in items.isEmpty ? [changeLog.trim()] : items)
-            Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(gutter, 7, gutter, 7),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    // Sits on the first line's x-height.
-                    margin: const EdgeInsetsDirectional.only(top: 7, end: 12),
-                    decoration: BoxDecoration(
-                      color: palette.mutedText,
-                      shape: BoxShape.circle,
-                    ),
+          for (final entry in entries.isEmpty
+              ? [(heading: false, text: changeLog.trim())]
+              : entries)
+            if (entry.heading)
+              Padding(
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  gutter,
+                  14,
+                  gutter,
+                  2,
+                ),
+                child: Text(
+                  entry.text,
+                  style: AppType.cardTitle.copyWith(
+                    fontFamily: AppType.bold,
+                    fontSize: 16,
+                    color: palette.foreground,
                   ),
-                  Expanded(
-                    child: Text(
-                      item,
+                ),
+              )
+            else
+              Padding(
+                padding: EdgeInsetsDirectional.fromSTEB(gutter, 7, gutter, 7),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '-',
                       style: AppType.body.copyWith(
                         fontSize: 15,
                         height: 1.4,
                         color: palette.secondaryText,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        entry.text,
+                        style: AppType.body.copyWith(
+                          fontSize: 15,
+                          height: 1.4,
+                          color: palette.secondaryText,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
         ],
       ),
     );
@@ -1165,7 +1184,8 @@ class _WhatsNew extends StatelessWidget {
                 child: Text(
                   line.replaceFirst(_heading, ''),
                   style: AppType.cardTitle.copyWith(
-                    fontSize: 15,
+                    fontFamily: AppType.bold,
+                    fontSize: 17,
                     color: palette.foreground,
                   ),
                 ),
@@ -1176,13 +1196,10 @@ class _WhatsNew extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      margin: const EdgeInsets.only(top: 7),
-                      decoration: BoxDecoration(
-                        color: palette.mutedText,
-                        shape: BoxShape.circle,
+                    Text(
+                      '-',
+                      style: AppType.body.copyWith(
+                        color: palette.secondaryText,
                       ),
                     ),
                     const SizedBox(width: 12),

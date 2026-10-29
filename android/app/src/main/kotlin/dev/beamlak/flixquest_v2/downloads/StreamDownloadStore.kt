@@ -9,6 +9,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.DataSourceInputStream
 import androidx.media3.datasource.DataSpec
@@ -28,6 +29,7 @@ import androidx.media3.exoplayer.offline.DownloaderFactory
 import androidx.media3.exoplayer.offline.ProgressiveDownloader
 import androidx.media3.exoplayer.scheduler.Requirements
 import org.json.JSONObject
+import uz.shs.better_player_plus.DisguisedSegmentDataSource
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ExecutorService
@@ -80,7 +82,11 @@ class StreamDownloadStore private constructor(context: Context) {
             override fun onPrepared(helper: DownloadHelper, tracksInfoAvailable: Boolean) {
                 try {
                     val selection = arguments["audioTrack"] as? Map<*, *>
-                    if (selection != null) {
+                    // Progressive files have their audio muxed in: there are
+                    // no manifest track groups to override, so a selection
+                    // here can only fail preparation. Dart already passes
+                    // null for progressive; this guards any other caller.
+                    if (selection != null && format.lowercase() != "progressive") {
                         check(tracksInfoAvailable) { "Audio track information is unavailable." }
                         for (period in 0 until helper.periodCount) {
                             val override = DownloadAudioTracks.findOverride(helper.getTracks(period), selection)
@@ -205,9 +211,13 @@ class StreamDownloadStore private constructor(context: Context) {
     }
 
     private fun createHelper(arguments: Map<*, *>, id: String, url: String, format: String): DownloadHelper {
+        // Progressive is a single file (e.g. Netmirror's signed MP4). No
+        // mime type is set: Media3 infers a progressive helper from the URL,
+        // which also covers signed URLs that carry no extension.
         val mimeType = when (format.lowercase()) {
             "hls" -> MimeTypes.APPLICATION_M3U8
             "dash" -> MimeTypes.APPLICATION_MPD
+            "progressive" -> null
             else -> {
                 throw IllegalArgumentException("Unsupported stream format: $format")
             }
@@ -368,6 +378,10 @@ class StreamDownloadStore private constructor(context: Context) {
                 .setAllowCrossProtocolRedirects(true)
                 .setUserAgent("FlixQuest/4.0")
                 .setDefaultRequestProperties(headers)
+
+        /** HLS segments can arrive hidden in images; unwrap them before caching, as the player does. */
+        fun mediaFactory(mimeType: String?, http: DataSource.Factory): DataSource.Factory =
+            if (mimeType == MimeTypes.APPLICATION_M3U8) DisguisedSegmentDataSource.Factory(http) else http
     }
 }
 
@@ -378,8 +392,11 @@ private class HeaderAwareDownloaderFactory(
 ) : DownloaderFactory {
     override fun createDownloader(request: DownloadRequest): Downloader {
         val metadata = StreamDownloadStore.requestMetadata(request)
-        val upstream = StreamDownloadStore.httpFactory(
-            StreamDownloadStore.metadataHeaders(metadata),
+        val upstream = StreamDownloadStore.mediaFactory(
+            request.mimeType,
+            StreamDownloadStore.httpFactory(
+                StreamDownloadStore.metadataHeaders(metadata),
+            ),
         )
         val cacheFactory = CacheDataSource.Factory()
             .setCache(cache)

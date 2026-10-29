@@ -30,7 +30,6 @@ import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:better_player_plus/better_player_plus.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../functions/function.dart';
 import '../../provider/settings_provider.dart';
 import '../../provider/offline_download_provider.dart';
@@ -41,6 +40,7 @@ import '../../ui_components/app_ui_components.dart';
 import '../../services/stream_intro_service.dart';
 import '../../services/introdb_service.dart';
 import '../../services/offline_download_service.dart';
+import '../../services/playback_wake_lock.dart';
 import '../../services/stream_size_estimator.dart';
 import '../movie/movie_video_loader.dart';
 import '../tv/tv_video_loader.dart';
@@ -310,7 +310,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     // Playback owns the screen for the whole session on both surfaces. Better
     // Player only holds a wakelock inside its own fullscreen route, which TV
     // playback never enters.
-    unawaited(WakelockPlus.enable());
+    PlaybackWakeLock.instance.hold(this);
     betterPlayerBufferingConfiguration = buildPlayerBufferingConfiguration(
       maximumDurationMs: widget.settings.defaultMaxBufferDuration,
       television: widget.useTvControls,
@@ -335,6 +335,14 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
           enableBrightnessSwipe: !widget.useTvControls,
           enableSeekSwipe: !widget.useTvControls,
           enableDoubleTapSeek: !widget.useTvControls,
+          fastHoldSpeed:
+              widget.useTvControls || widget.settings.fastHoldSpeed <= 0
+                  ? null
+                  : widget.settings.fastHoldSpeed,
+          slowHoldSpeed:
+              widget.useTvControls || widget.settings.slowHoldSpeed <= 0
+                  ? null
+                  : widget.settings.slowHoldSpeed,
           volumeSwipeSensitivity: 0.5,
           brightnessSwipeSensitivity: 0.5,
           seekSwipeSensitivity: 1.0,
@@ -484,7 +492,10 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
             autoDispose: true,
             controlsConfiguration: betterPlayerControlsConfiguration,
             showPlaceholderUntilPlay: true,
-            allowedScreenSleep: false,
+            // PlaybackWakeLock keeps the screen on for the whole session.
+            // Better Player's own hold covers only its fullscreen route and
+            // clears the flag on the way out, under whatever else needs it.
+            allowedScreenSleep: true,
             autoDetectFullscreenAspectRatio: !widget.useTvControls,
             errorBuilder: (context, _) =>
                 _buildCustomPlayerErrorWidget(context),
@@ -818,13 +829,6 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         _trackPlaybackEvent('subtitle_changed', value: language);
         break;
       case BetterPlayerEventType.hideFullscreen:
-        // Leaving Better Player's fullscreen route unconditionally clears the
-        // screen-on flag. The route pop completes the awaiting fullscreen
-        // continuation in a microtask, so re-asserting on the next frame lands
-        // after that cleanup and restores the player-lifetime hold.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          unawaited(WakelockPlus.enable());
-        });
         break;
       case BetterPlayerEventType.pipStart:
         _inPictureInPicture = true;
@@ -1924,7 +1928,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
 
     // Restore original brightness before disposing
     BetterPlayerBrightnessManager.restoreOriginalBrightness();
-    unawaited(WakelockPlus.disable());
+    PlaybackWakeLock.instance.release(this);
 
     _betterPlayerController.removeEventsListener(_onAnalyticsPlayerEvent);
     _stopAnalyticsWatchClock();
@@ -2787,6 +2791,12 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         if (widget.mediaType == MediaType.tvShow && tvId != null) {
           unawaited(settings.setLastTvProvider(tvId, providerCode));
         }
+        // Same for movies: reopening the movie starts on the provider the
+        // user picked, instead of restarting from the top of the order.
+        final movieId = widget.movieMetadata?.movieId;
+        if (widget.mediaType == MediaType.movie && movieId != null) {
+          unawaited(settings.setLastMovieProvider(movieId, providerCode));
+        }
       }
       settings.analytics.trackProviderAttempt(
         mediaType: _analyticsMediaType,
@@ -3546,13 +3556,10 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
     final url = sources[resolution];
     if (url == null) return;
     final declaredFormat = formats[resolution];
-    final format = declaredFormat == BetterPlayerVideoFormat.dash
-        ? 'dash'
-        : declaredFormat == BetterPlayerVideoFormat.hls
-            ? 'hls'
-            : url.toLowerCase().contains('.mpd')
-                ? 'dash'
-                : 'hls';
+    final format = VideoUtils.inferDownloadFormat(
+      declaredFormat: declaredFormat,
+      url: url,
+    );
     final movie = widget.movieMetadata;
     final episode = widget.tvMetadata;
     final isMovie = widget.mediaType == MediaType.movie;
@@ -3565,16 +3572,20 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       final downloadHeaders = headers[resolution] ??
           VideoUtils.inferVideoHeaders(url) ??
           const <String, String>{};
-      final audioSelection = await DownloadSelectionSheets.chooseAudio(
-        context,
-        tracks: OfflineDownloadService.instance.getAudioTracks(
-          url: url,
-          format: format,
-          headers: downloadHeaders,
-          maxVideoHeight: _downloadResolutionHeight(resolution),
-        ),
-        inPlayer: true,
-      );
+      // Progressive files have their audio muxed in: no manifest to inspect
+      // and no track to choose, so skip the sheet and keep the default.
+      final audioSelection = format == 'progressive'
+          ? const DownloadAudioSelection(null)
+          : await DownloadSelectionSheets.chooseAudio(
+              context,
+              tracks: OfflineDownloadService.instance.getAudioTracks(
+                url: url,
+                format: format,
+                headers: downloadHeaders,
+                maxVideoHeight: _downloadResolutionHeight(resolution),
+              ),
+              inPlayer: true,
+            );
       if (!mounted) return;
       if (audioSelection == null) {
         return;
