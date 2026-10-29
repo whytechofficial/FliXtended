@@ -62,10 +62,7 @@ runs on Firebase exactly as before.
   TMDB route, so behaviour on Jio is unchanged; this is groundwork that
   keeps TMDB loading reliable.
 - **Scraper on the same network layer** — provider results now load
-  through the same Dio network client as TMDB, replacing the old
-  plain-HTTP calls. Every provider, the full-list fallback, and subtitle
-  pre-downloads stay exactly as they were — just one shared layer
-  instead of two separate ones.
+  through the same network client as TMDB, instead of a separate one.
 
 
 ## v4.3.8 (2026-10-24)
