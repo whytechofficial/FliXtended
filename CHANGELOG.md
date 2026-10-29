@@ -1,5 +1,88 @@
 # FliXtended Changelog
 
+## v4.3.9 (2026-10-29)
+
+A partial merge of upstream FlixQuest 4.3.0, with our Firebase setup kept
+intact. Upstream 4.3.0 moved accounts, sync, settings and notifications to
+its own Laravel backend — we did not take that path, so everything below
+runs on Firebase exactly as before. Plus two fixes and two features from
+our own beta cycle.
+
+### Our changes (per beta, newest first)
+
+**beta38 (2026-10-29)** — movies remember their provider, downloads
+remember your spot
+- Sticky provider for movies: if you switch a movie to Nalanda (or any
+  other provider), the next time you open that movie it starts from that
+  provider instead of restarting from the top of the list. The choice is
+  remembered per movie, even across restarts. Series already had this
+  since beta+24; movies now match.
+- Downloads remember where you left off: stop a downloaded movie midway,
+  close the app, reopen the download, and it picks up at the same spot.
+  Finish past 85% (or let it finish) and the saved spot clears, so the
+  next open starts at 0 — the same rule streaming already uses.
+
+**beta37 (2026-10-29)** — Netmirror downloads fixed
+- Downloads from Nalanda (Netmirror) work again. Netmirror serves signed
+  MP4 files, but the download flow only understood HLS/DASH manifests and
+  treated everything else as HLS, so it died on audio inspection. The flow
+  now recognises single-file progressive streams, skips the audio-track
+  sheet for them (the audio is already inside the file), and saves the
+  whole MP4. HLS and DASH downloads behave exactly as before.
+
+**beta36 (2026-10-29)** — first test build of the v4.3.0 partial merge
+- See "Upstream FlixQuest 4.3.0 (partial)" below.
+- Changelog headings render bold with no bullet dot, bullets as hyphens
+  (fix carried from the pre-merge tree).
+
+### Upstream FlixQuest 4.3.0 (partial, by Beamlak)
+
+Merged in part; the items listed under "Deliberately left out" were not
+taken. Our own Firebase sync, provider order, branding and ad-free stance
+are unchanged.
+- **New TMDB layer** — the app's TMDB calls now run on a dedicated client
+  with proxy routing and caching. Our Cloudflare Worker stays the TMDB
+  route, so behaviour on Jio is unchanged; this is groundwork that keeps
+  TMDB loading reliable.
+- **Scraper on the same client** — provider results now load through the
+  same network stack, with our full-collection fallback and subtitle
+  pre-download kept.
+- **TV "See all" screens** — trending, popular and top-10 rows on TV now
+  open proper paged grids.
+- **Tablet side rail** — large screens (600dp and up) get a side rail
+  layout.
+- **Trailers** — YouTube trailer filtering and launching, cleaned up.
+- **Subtitle picker** — restricted to `.srt`/`.vtt`, with a fallback for
+  older Android.
+- **Hold-to-speed gestures** — long-press a side of the player (controls
+  hidden) to speed up or slow down while you hold, with a speed pill and
+  restore on release. Speeds are configurable in settings.
+- **Wake-lock** — playback keep-screen-on moved to a dedicated service
+  for both the main player and live TV.
+- **Translations** — English, Arabic, Spanish and Hindi updated with the
+  new keys (hold speeds, See-all labels, subtitle-formats notice).
+- **Downloads** — HLS segments hidden inside images (disguised segments)
+  are now unwrapped for downloads.
+- **Layout** — server status and update screens use the shared content
+  width.
+
+**Deliberately left out of v4.3.9:**
+- *Laravel backend migration* — upstream 4.3.0's accounts, sync, settings
+  and notifications backend, including FlixQuest Plus (prepaid wallet)
+  and OneSignal push. FliXtended stays on Firebase; no server bill, no
+  upkeep, no account migration.
+- *Upstream synced lists and shareable list links* — these depend on the
+  Laravel backend. Named lists rebuilt in FliXtended form on Firebase are
+  planned for the next update instead (local lists first, then Firestore
+  sync, then share links).
+- *TV details/library/profile and mobile my-library rewrites* — skipped
+  whole; they are tangled with the Laravel/Plus code.
+- *TV D-pad sign-in keyboard* — built for upstream's Laravel TV auth
+  screen; shelved, since wiring it to Firebase TV auth is extra work for
+  a one-time screen.
+- *Upstream multi-list sync* — see named lists above.
+- *Ads* — unchanged: no ads in FliXtended.
+
 ## v4.3.8 (2026-10-24)
 
 The first release built on the new lavender-and-gold identity. It merges every
