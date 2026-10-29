@@ -128,6 +128,7 @@ class WellnessProvider extends ChangeNotifier {
     _pushDueAt = dueAt;
     _syncDebounce = Timer(delay, () {
       _pushDueAt = null;
+      _syncDebounce = null;
       unawaited(_syncService.pushPending());
     });
   }
@@ -135,7 +136,10 @@ class WellnessProvider extends ChangeNotifier {
   Future<void> reload() async {
     _loading = true;
     notifyListeners();
-    _sessions = await _database.sessionsForOwner(_ownerId);
+    final owner = _ownerId;
+    final sessions = await _database.sessionsForOwner(owner);
+    if (owner != _ownerId) return;
+    _sessions = sessions;
     _loading = false;
     notifyListeners();
   }

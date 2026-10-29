@@ -142,6 +142,22 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
       debugPrint('Unable to load scraper providers: $error');
     }
     final orderedProviders = settings.orderStreamProviders(providers);
+    // Sticky provider: when the user picked a provider for this movie
+    // before, reopening it starts the race there instead of from the
+    // top of the order. If it has no streams, the race falls through to
+    // the normal order.
+    final movieId = _metadata.movieId;
+    if (movieId != null) {
+      final sticky = settings.getLastMovieProvider(movieId);
+      if (sticky != null) {
+        final stickyIndex =
+            orderedProviders.indexWhere((p) => p.codeName == sticky);
+        if (stickyIndex > 0) {
+          final provider = orderedProviders.removeAt(stickyIndex);
+          orderedProviders.insert(0, provider);
+        }
+      }
+    }
     if (!mounted) return;
     setState(() {
       videoProviders = orderedProviders;
@@ -545,28 +561,29 @@ class _MovieVideoLoaderState extends State<MovieVideoLoader> {
     }
     final url = sources[quality]!;
     final declaredFormat = videoFormats[quality];
-    final format = declaredFormat == BetterPlayerVideoFormat.dash
-        ? 'dash'
-        : declaredFormat == BetterPlayerVideoFormat.hls
-            ? 'hls'
-            : url.toLowerCase().contains('.mpd')
-                ? 'dash'
-                : 'hls';
+    final format = VideoUtils.inferDownloadFormat(
+      declaredFormat: declaredFormat,
+      url: url,
+    );
     final posterPath = _metadata.posterPath;
     final subtitleTrack = _preferredSubtitle(movieVideoSubs);
     try {
       final downloadHeaders = videoHeaders[quality] ??
           VideoUtils.inferVideoHeaders(url) ??
           const <String, String>{};
-      final audioSelection = await DownloadSelectionSheets.chooseAudio(
-        context,
-        tracks: OfflineDownloadService.instance.getAudioTracks(
-          url: url,
-          format: format,
-          headers: downloadHeaders,
-          maxVideoHeight: _qualityHeight(quality),
-        ),
-      );
+      // Progressive files have their audio muxed in: no manifest to inspect
+      // and no track to choose, so skip the sheet and keep the default.
+      final audioSelection = format == 'progressive'
+          ? const DownloadAudioSelection(null)
+          : await DownloadSelectionSheets.chooseAudio(
+              context,
+              tracks: OfflineDownloadService.instance.getAudioTracks(
+                url: url,
+                format: format,
+                headers: downloadHeaders,
+                maxVideoHeight: _qualityHeight(quality),
+              ),
+            );
       if (!mounted) return;
       if (audioSelection == null) {
         Navigator.pop(context, false);

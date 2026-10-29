@@ -67,6 +67,13 @@ class SettingsProvider with ChangeNotifier {
   int _defaultSeekDuration = 10;
   int get defaultSeekDuration => _defaultSeekDuration;
 
+  // Speeds played while the player's right and left edges are held; 0 is off.
+  double _fastHoldSpeed = 2;
+  double get fastHoldSpeed => _fastHoldSpeed;
+
+  double _slowHoldSpeed = .5;
+  double get slowHoldSpeed => _slowHoldSpeed;
+
   int _playerTimeDisplay = 1;
   int get playerTimeDisplay => _playerTimeDisplay;
 
@@ -258,6 +265,26 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> getHoldSpeeds() async {
+    _fastHoldSpeed = await _settingsPreferences.getFastHoldSpeed();
+    _slowHoldSpeed = await _settingsPreferences.getSlowHoldSpeed();
+    notifyListeners();
+  }
+
+  set fastHoldSpeed(double value) {
+    _fastHoldSpeed = value;
+    _settingsPreferences.setFastHoldSpeed(value);
+    _trackSetting('Fast Hold Speed', value);
+    notifyListeners();
+  }
+
+  set slowHoldSpeed(double value) {
+    _slowHoldSpeed = value;
+    _settingsPreferences.setSlowHoldSpeed(value);
+    _trackSetting('Slow Hold Speed', value);
+    notifyListeners();
+  }
+
   Future<void> getViewMode() async {
     defaultViewMode = await _settingsPreferences.autoFullScreen();
   }
@@ -431,6 +458,29 @@ class SettingsProvider with ChangeNotifier {
 
   String? getLastTvProvider(int tvId) =>
       _settingsPreferences.getLastTvProvider(tvId);
+
+  /// Remembers [providerCode] as the preferred provider for the movie
+  /// [movieId], so reopening it starts there instead of at the top of the
+  /// provider order. Mirrors the TV-series sticky.
+  Future<void> setLastMovieProvider(int movieId, String providerCode) =>
+      _settingsPreferences.setLastMovieProvider(movieId, providerCode);
+
+  String? getLastMovieProvider(int movieId) =>
+      _settingsPreferences.getLastMovieProvider(movieId);
+
+  /// Saves the offline playback position for a download, in milliseconds.
+  Future<void> setOfflineResumePosition(
+          String downloadId, int positionMs) =>
+      _settingsPreferences.setOfflineResumePosition(downloadId, positionMs);
+
+  /// Returns the saved offline playback position for a download, in
+  /// milliseconds, or null when there is nothing to resume.
+  int? getOfflineResumePosition(String downloadId) =>
+      _settingsPreferences.getOfflineResumePosition(downloadId);
+
+  /// Discards the saved offline playback position for a download.
+  Future<void> clearOfflineResumePosition(String downloadId) =>
+      _settingsPreferences.clearOfflineResumePosition(downloadId);
 
   bool _sameOrder(List<String> left, List<String> right) {
     if (left.length != right.length) return false;
