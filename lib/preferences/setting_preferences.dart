@@ -79,6 +79,25 @@ class SettingsPreferences {
     return sharedPrefsSingleton.getInt(SEEK_PREFERENCE) ?? 10;
   }
 
+  // 0 turns holding that edge of the player off.
+  static const FAST_HOLD_SPEED = 'fast_hold_speed';
+  setFastHoldSpeed(double speed) async {
+    sharedPrefsSingleton.setDouble(FAST_HOLD_SPEED, speed);
+  }
+
+  Future<double> getFastHoldSpeed() async {
+    return sharedPrefsSingleton.getDouble(FAST_HOLD_SPEED) ?? 2;
+  }
+
+  static const SLOW_HOLD_SPEED = 'slow_hold_speed';
+  setSlowHoldSpeed(double speed) async {
+    sharedPrefsSingleton.setDouble(SLOW_HOLD_SPEED, speed);
+  }
+
+  Future<double> getSlowHoldSpeed() async {
+    return sharedPrefsSingleton.getDouble(SLOW_HOLD_SPEED) ?? .5;
+  }
+
   // static const MIN_BUFFER_PREFERENCE = 'min_buffer';
   // setMinBufferDuration(int bufferDuration) async {
   //
@@ -215,6 +234,49 @@ class SettingsPreferences {
       '$_LAST_TV_PROVIDER_PREFIX$tvId',
     );
     return code == null || code.trim().isEmpty ? null : code;
+  }
+
+  /// Last manually-chosen provider per movie (keyed by TMDB movie id), so
+  /// reopening the movie starts on the same provider instead of restarting
+  /// from the top of the provider order. Mirrors the TV-series sticky.
+  static const _LAST_MOVIE_PROVIDER_PREFIX = 'last_movie_provider_';
+
+  Future<void> setLastMovieProvider(int movieId, String providerCode) async {
+    await sharedPrefsSingleton.setString(
+      '$_LAST_MOVIE_PROVIDER_PREFIX$movieId',
+      providerCode,
+    );
+  }
+
+  String? getLastMovieProvider(int movieId) {
+    final code = sharedPrefsSingleton.getString(
+      '$_LAST_MOVIE_PROVIDER_PREFIX$movieId',
+    );
+    return code == null || code.trim().isEmpty ? null : code;
+  }
+
+  /// Saved playback position per download (keyed by download id, in
+  /// milliseconds), so reopening a download resumes where it was left off.
+  /// This is playback position only — it never touches the download's
+  /// `progress`, which tracks downloaded bytes.
+  static const _OFFLINE_RESUME_PREFIX = 'offline_resume_';
+
+  Future<void> setOfflineResumePosition(
+      String downloadId, int positionMs) async {
+    await sharedPrefsSingleton.setInt(
+      '$_OFFLINE_RESUME_PREFIX$downloadId',
+      positionMs,
+    );
+  }
+
+  int? getOfflineResumePosition(String downloadId) {
+    final value =
+        sharedPrefsSingleton.getInt('$_OFFLINE_RESUME_PREFIX$downloadId');
+    return value != null && value > 0 ? value : null;
+  }
+
+  Future<void> clearOfflineResumePosition(String downloadId) async {
+    await sharedPrefsSingleton.remove('$_OFFLINE_RESUME_PREFIX$downloadId');
   }
 
   Future<void> setStreamProviderOrder(List<String> providerCodes) async {
