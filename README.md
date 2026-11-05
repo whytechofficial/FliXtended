@@ -1,20 +1,29 @@
 <p align="center">
-  <img alt="FlixQuest" src="assets/images/FlixQuest.png" width="180">
+  <img alt="FliXtended" src="assets/images/flixtended_ribbon_mark.png" width="180">
 </p>
 
-<h1 align="center">FlixQuest</h1>
+<h1 align="center">FliXtended</h1>
 
 <p align="center">
   <strong>A modern, open-source streaming application for Movies, TV Shows, and Live TV built with Flutter.</strong><br>
-  Optimized for <strong>Android Mobile, Tablets</strong>, and <strong>Android TV (10-Foot UI)</strong>.
+  Optimized for <strong>Android Mobile, Tablets</strong>, and <strong>Android TV (10-Foot UI)</strong>.<br>
+  A fork of <a href="https://github.com/BeamlakAschalew/flixquest">FlixQuest</a> with its own identity — lavender and gold,
+  regional language rows, and its own domain links.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter">
   <img src="https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white" alt="Dart">
   <img src="https://img.shields.io/badge/Platform-Android%20%7C%20Android%20TV-3DDC84?logo=android&logoColor=white" alt="Platform">
-  <img src="https://img.shields.io/badge/Version-4.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Version-4.4.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/License-GPL--3.0-green" alt="License">
+</p>
+
+<p align="center">
+  📥 <strong>Latest release: v4.4.0</strong> —
+  <a href="https://github.com/whytechofficial/FliXtended/releases/tag/v4.4.0">Download the APK</a> ·
+  <a href="https://flixtended.pages.dev">Website</a> ·
+  <a href="https://t.me/FliXtended">Telegram</a>
 </p>
 
 ---
@@ -24,6 +33,7 @@
 ### 🎬 Extensive Movie & TV Show Catalog
 
 - **Discovery Feeds**: Categorized home feeds with shimmer loading effects — Trending, Top 10 This Week, New Releases, Upcoming, and Popular.
+- **Regional Language Rows**: Trending rows in Malayalam, Tamil, Hindi, and Telugu beside the world charts, so the next thing you watch feels like home.
 - **Detailed Media Pages**: Media details featuring trailers, cast & crew filmographies, user reviews, and intelligent "More Like This" recommendations powered by TMDB.
 - **Explore & Filter**: Filter content by genre, release year, streaming provider, country, or sort order, alongside a random discovery tool.
 - **TV Seasons & Episodes**: Interactive episode browser with episode thumbnails, descriptions, air dates, and quick episode switcher sheets.
@@ -44,7 +54,7 @@
 
 ### 🚀 Multi-Source Video Providers & Scraper API v2
 
-- **Dynamic Provider System**: Integrated with **FlixQuest Scraper API v2** for scraping high-quality streams.
+- **Dynamic Provider System**: Integrated with the FlixQuest Scraper API v2 backend for scraping high-quality streams.
 - **Live Provider Health Status**: Real-time provider uptime monitoring (`/providers/status`) with in-app status indicators.
 - **Direct Fallback Provider**: Built-in direct VixSrc provider fallback.
 - **Custom Provider Prioritization**: Reorder and prioritize your preferred streaming providers in Settings.
@@ -68,6 +78,7 @@
 
 - **Phosphor Icons**: Clean, consistent icon set using Phosphor Flutter icons across the entire app.
 - **Ambient Mode**: Dynamic color palette extraction from movie/show posters and backdrops for an immersive ambient background glow.
+- **Lavender & Gold Identity**: FliXtended's own lavender and gold theme, with a ribbon-F mark.
 - **Occasional & Seasonal Themes**: Dynamic holiday themes (Christmas, New Year, Halloween, Valentine's Day, Easter, Eid, Diwali, Ethiopian New Year, etc.) with animated vector particle overlays (snow, fireworks, bats, hearts, adey flowers, confetti, stars, sparkles). Configurable via Firebase Remote Config.
 - **Themes**: Light, Dark, AMOLED Pure Black, and Material 3 Dynamic Color palettes.
 
@@ -114,7 +125,7 @@
 
 ## ⚙️ Environment Variables & API Keys
 
-FlixQuest uses `flutter_dotenv` to load environment variables. Create a `.env` file in the root directory of the project:
+FliXtended uses `flutter_dotenv` to load environment variables. Create a `.env` file in the root directory of the project:
 
 ```env
 # Required: TMDB API Key for movie and TV show metadata
@@ -124,20 +135,21 @@ TMDB_API_KEY="your_tmdb_api_key"
 FLIXQUEST_API_URL="https://your-flixquest-api-instance.com"
 
 # Optional: Mixpanel project token for general analytics
+# (Mixpanel ships inert in FliXtended builds — the key is blanked.)
 MIXPANEL_API_KEY="your_mixpanel_api_key"
 ```
 
 ### Obtaining API Keys
 
 - **TMDB API Key**: Register at [The Movie Database (TMDB)](https://developer.themoviedb.org/v3/reference/intro/authentication#api-key-quick-start) to get your free API key.
-- **FlixQuest Scraper API**: The scraper service is closed-source. For API access, self-hosting inquiries, or support, please reach out to [flixquestapp@gmail.com](mailto:flixquestapp@gmail.com).
+- **FlixQuest Scraper API**: The scraper service is closed-source and run by the upstream project. For API access or self-hosting inquiries, reach out through the FliXtended community on [Telegram](https://t.me/FliXtended).
 - **Mixpanel Token** _(Optional)_: Create a free account at [Mixpanel](https://mixpanel.com).
 
 ---
 
-## 🕷️ FlixQuest Scraper API v2
+## 🕷️ Scraper API v2
 
-FlixQuest communicates with **FlixQuest Scraper API v2** for resolving streaming sources. The backend service is closed-source; please contact [flixquestapp@gmail.com](mailto:flixquestapp@gmail.com) for support or API instance access.
+FliXtended resolves streaming sources through the FlixQuest Scraper API v2 backend (the upstream project's service). The backend itself is closed-source.
 
 The client-side API contract and payload schemas are documented in [`openapi.json`](openapi.json).
 
@@ -156,7 +168,7 @@ Key endpoints consumed by the app:
 
 ## 🔥 Firebase Configuration
 
-FlixQuest uses Firebase for several services:
+FliXtended uses Firebase for several services:
 
 | Service                       | Purpose                                                                                                                                                                                                                             |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -205,8 +217,8 @@ better_player_plus:
 1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/BeamlakAschalew/flixquest.git
-   cd flixquest
+   git clone https://github.com/whytechofficial/FliXtended.git
+   cd FliXtended
    ```
 
 2. **Clone the custom better_player repository** (if using local path):
@@ -214,7 +226,7 @@ better_player_plus:
    ```bash
    cd ..
    git clone https://github.com/BeamlakAschalew/flixquest-betterplayer.git
-   cd flixquest
+   cd FliXtended
    ```
 
 3. **Configure Environment Variables**:
@@ -259,7 +271,7 @@ better_player_plus:
    The test selector works in dev debug/profile/release builds. Prod ignores it
    in every build mode. See [banner testing setup](docs/firebase_remote_config.md#test-real-banners-in-development).
    Both flavors reuse the existing Android package and Firebase registration;
-   they share an install slot. The dev launcher label is **FlixQuest Dev**.
+   they share an install slot. The dev launcher label is **FliXtended Dev**.
 
 6. **Build Release APK**:
 
@@ -304,15 +316,15 @@ Contributions, feature suggestions, design ideas, and translations are always we
 ## ⚠️ Disclaimer
 
 - The developers of this application have no affiliation with content providers like TMDB, DaddyLive, or any third-party streaming websites.
-- FlixQuest **does not host or upload any video content**. All media is retrieved via public scrapers and third-party APIs.
+- FliXtended **does not host or upload any video content**. All media is retrieved via public scrapers and third-party APIs.
 - In case of copyright infringement, please contact the responsible hosting services or source providers directly.
 
 ---
 
 <div align="center">
   <h3>Support the Project</h3>
-  <a href="https://www.buymeacoffee.com/cinemaxapp">
-    <img src="https://i.ibb.co/Tr4sC5X/bmc-button.png" height="60" alt="Buy Me A Coffee">
+  <a href="https://www.buymeacoffee.com/AadilSamjeed">
+    <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=AadilSamjeed&button_colour=FFDD00&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" height="60" alt="Buy Me A Coffee">
   </a>
 </div>
 
@@ -320,6 +332,7 @@ Contributions, feature suggestions, design ideas, and translations are always we
 
 ### 🙏 Credits & Integrations
 
+- **FlixQuest by Beamlak Aschalew**: The original app FliXtended builds on.
 - **TMDB API**: Media metadata, cast, crew, and artwork.
 - **Phosphor Icons**: Beautiful, consistent icon pack (`phosphor_flutter`).
 - **Matinee Flutter**: Initial UI inspiration and base architecture (`bimsina/Matinee-Flutter`).
@@ -327,6 +340,6 @@ Contributions, feature suggestions, design ideas, and translations are always we
 ---
 
 <p align="center">
-  <i>GNU, but for Entertainment</i><br><br>
-  <strong>© 2022–2026 FlixQuest</strong>
+  <strong>© 2026 FliXtended</strong><br>
+  Built on FlixQuest. Made for the way we watch.
 </p>

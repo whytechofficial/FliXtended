@@ -1,5 +1,132 @@
 # FliXtended Changelog
 
+## v4.4.0 (2026-11-05)
+
+The big one: this release merges every upstream FlixQuest change from v4.3.1, rebuilt for FliXtended's Firebase backend, plus the TV and cross-device work that followed. Sign in on the TV with your phone, browse by country, and pick up where you left off on any device.
+
+### 📺 TV sign-in with your phone
+
+- The TV shows a QR code and an 8-character code. Type it in the phone app (Account › Sign in a TV) and the TV signs in as your account — full identity, not a guest. Codes last 10 minutes and work once.
+- If the sign-in service can't be reached, the TV now shows a proper error with a Retry button instead of waiting silently forever. Retry keeps the same code.
+
+### 🔍 TV Discover, New & Hot, and people
+
+- Discover joins the TV rail. Browse by sort, genre, country, service, year, rating and status, with a live results grid.
+- On the phone, Discover gains a country section — popular-country pills with flags, a "More countries" search, and removable filter chips.
+- New & Hot joins the TV rail, between Series and Discover.
+- Person pages on TV, with biography and their titles.
+- TV title pages now show a cast row — open a person straight from a title.
+- The TV spotlight now fits properly on short screens.
+
+### 📡 Live TV
+
+- Abay (NTV) joins Awash (DaddyLive) as a second live source — channels only, no schedule. Favourites and recents are kept per source, and the app remembers the source you last used.
+- Streams now resolve with backups and a probe-first check, so a dead link falls over to the next working one faster.
+- On the TV remote you can now pick channels, categories and backup streams from on-screen menus.
+
+### 🔄 Pick up anywhere
+
+- Continue Watching now resumes on the provider you actually watched on, across devices — and your position syncs across devices too, including downloads.
+- Your audio language now syncs across devices, and the TV remembers your audio and quality picks per title.
+- An episode downloaded on the phone now resumes on the TV from the same spot.
+
+### 🌍 Languages and regions
+
+- Italian and French join the app, alongside Arabic, English, Spanish and Hindi.
+- Flag emojis replace the flag images throughout.
+- Regional Top 10 rows (Malayalam, Tamil, Hindi, Telugu) appear on TV home, Movies and Series.
+- The TV language picker shows flags.
+
+### ✨ Seasonal effects on TV
+
+- Seasonal effects (Diwali lights from Nov 6, and the rest of the seasonal pack) now show on TV, not just on the phone.
+- Seasonal themes are effects only — bats, Diwali lights and the rest dress the screen while the base theme keeps its own colours.
+
+### ⚙️ TV account and server status
+
+- Manage account on the TV: edit profile (name, username, picture), change email, change password, and delete account. Deleting an account is a full wipe — profile, lists, bookmarks, watch history and everything else tied to it, gone together.
+- Settings › About › Server status shows the health of every provider on the TV, with a re-check button.
+- Hampi, Nalanda and Dholavira now appear in the TV server status list and in the TV provider-order dialog.
+- "Not covered by this health check" is translated in all six languages on the TV server status screen.
+
+### 🎨 TV polish
+
+- The TV landing panel scrolls, so every option is reachable.
+- The TV rail now says FLIXTENDED and the colour-theme name says FliXtended.
+- The TV landing screen now says FliXtended TV, with the logo.
+- TV sign-in no longer trips over the sign-in rules while signed out.
+- The developer build's launcher label is wired properly (FliXtended Dev; needs a dev build to see it).
+
+---
+
+Upstream FlixQuest v4.3.1 merged in full, except Patreon Plus and the ad-blocker warnings. The QR flow and account management are rebuilt for FliXtended's Firebase backend rather than upstream's Laravel flow.
+
+**Heads-up:** episode resume rows only work for downloads made on 4.4.0 or later — older downloads don't gain them retroactively.
+
+## v4.3.9
+
+A partial merge of upstream FlixQuest 4.3.0, with our Firebase setup kept
+intact. Upstream 4.3.0 moved accounts, sync, settings and notifications to
+its own Laravel backend — we did not take that path, so everything below
+runs on Firebase exactly as before.
+
+### ✨ Experience
+
+- **Tablet side rail** — large screens (600dp and up) get a side rail
+  layout.
+- **Cleaner screens** — server status and update screens use the shared
+  content width, and changelog headings render bold with no bullet dot,
+  bullets as hyphens.
+- **More languages polished** — English, Arabic, Spanish and Hindi
+  updated with the new keys (hold speeds, See-all labels,
+  subtitle-formats notice).
+
+### 🎬 Watching
+
+- **Hold-to-speed gestures** — long-press a side of the player (controls
+  hidden) to speed up or slow down while you hold, with a speed pill and
+  restore on release. Speeds are configurable in settings.
+- **Keep-screen-on, done right** — playback wake-lock moved to a
+  dedicated service for both the main player and live TV.
+- **Subtitle picker** — restricted to `.srt`/`.vtt`, with a fallback for
+  older Android.
+- **Movies remember their provider** — if you switch a movie to Nalanda
+  (or any other provider), the next time you open that movie it starts
+  from that provider instead of restarting from the top of the list. The
+  choice is remembered per movie, even across restarts. Series already
+  had this feature; movies now match.
+- **Trailers** — YouTube trailer filtering and launching, cleaned up.
+
+### 🛋️ Big Screen
+
+- **See-all screens** — trending, popular and top-10 rows on TV now open
+  proper paged grids.
+
+### 📥 Offline
+
+- **Nalanda downloads fixed** — Netmirror serves signed MP4 files, but
+  the download flow only understood HLS/DASH manifests and treated
+  everything else as HLS, so it died on audio inspection. The flow now
+  recognises single-file progressive streams, skips the audio-track
+  sheet for them (the audio is already inside the file), and saves the
+  whole MP4. HLS and DASH downloads behave exactly as before.
+- **Downloads remember your spot** — stop a downloaded movie midway,
+  close the app, reopen the download, and it picks up at the same spot.
+  Finish past 85% (or let it finish) and the saved spot clears, so the
+  next open starts at 0 — the same rule streaming already uses.
+- **Hidden HLS segments** — segments tucked inside images (disguised
+  segments) are now unwrapped for downloads.
+
+### ⚙️ Behind the Scenes
+
+- **New TMDB layer** — the app's TMDB calls now run on a dedicated
+  client with proxy routing and caching. Our Cloudflare Worker stays the
+  TMDB route, so behaviour on Jio is unchanged; this is groundwork that
+  keeps TMDB loading reliable.
+- **Scraper on the same network layer** — provider results now load
+  through the same network client as TMDB, instead of a separate one.
+
+
 ## v4.3.8 (2026-10-24)
 
 The first release built on the new lavender-and-gold identity. It merges every
