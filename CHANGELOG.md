@@ -1,5 +1,11 @@
 # FliXtended Changelog
 
+## v4.4.1 (2026-11-06)
+
+### 📺 TV
+- The app now detects a TV at startup and opens in the TV layout by itself — no more opening in the phone layout on Android TV and Google TV, and no need to force TV mode in Settings.
+- The TV home tile now shows the FliXtended ribbon banner instead of the old FlixQuest one.
+
 ## v4.4.0 (2026-11-05)
 
 The big one: this release merges every upstream FlixQuest change from v4.3.1, rebuilt for FliXtended's Firebase backend, plus the TV and cross-device work that followed. Sign in on the TV with your phone, browse by country, and pick up where you left off on any device.

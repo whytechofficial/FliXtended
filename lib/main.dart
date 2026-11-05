@@ -29,6 +29,7 @@ import 'services/start_io_ads_service.dart';
 import 'services/home_widget_navigation_service.dart';
 import 'singleton/sharedpreferences_singleton.dart';
 import 'tv/platform/device_presentation.dart';
+import 'tv/platform/device_presentation_detector.dart';
 
 @pragma('vm:entry-point')
 Future<void> _messageHandler(RemoteMessage message) async {
@@ -119,9 +120,19 @@ Future<DevicePresentation> appInitialize({
     return true;
   };
 
-  // Skip MethodChannel on startup (may race with native handler registration).
-  // Default to handheld; TV mode can be detected later if needed.
-  final devicePresentation = DevicePresentation.handheld;
+  // Detect the presentation via the native channel (UiModeManager /
+  // Leanback feature). Guarded with a short timeout so a slow or missing
+  // native handler can never stall startup; any failure falls back to
+  // handheld (the previous behaviour), and the Settings > App mode
+  // override still wins over the detected value.
+  DevicePresentation devicePresentation;
+  try {
+    devicePresentation = await resolveDevicePresentation(
+      detector: devicePresentationDetector,
+    ).timeout(const Duration(seconds: 3));
+  } catch (_) {
+    devicePresentation = DevicePresentation.handheld;
+  }
 
   // Initialize MediaKit for video playback with multiple codec support
   // MediaKit.ensureInitialized();
