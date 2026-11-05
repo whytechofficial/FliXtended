@@ -137,15 +137,18 @@ void main() {
       expect(settings.enableProxy, isTrue);
       if (simulation == null) {
         expect(requests, hasLength(5));
+        // Destinations carry the app's TMDB base path (today the worker's
+        // /ab/3 prefix), not the bare /3 paths of the public API host.
+        final tmdbBase = Uri.parse(TMDB_API_BASE_URL);
         expect(
             requests.map((uri) => uri.path),
             containsAll(<String>[
-              '/3/search/movie',
-              '/3/search/tv',
-              '/3/search/person',
+              '${tmdbBase.path}/search/movie',
+              '${tmdbBase.path}/search/tv',
+              '${tmdbBase.path}/search/person',
             ]));
         for (final request in requests) {
-          expect(request.host, 'api.themoviedb.org');
+          expect(request.host, tmdbBase.host);
           expect(request.queryParameters['query'], query.trim());
           expect(request.queryParameters['include_adult'], 'true');
           expect(request.queryParameters['language'], 'fr-FR');

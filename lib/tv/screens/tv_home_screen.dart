@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
+import '../../catalog/home_feed_controller.dart' show RegionalLanguage;
 import '../../provider/app_dependency_provider.dart';
 import '../../screens/common/update_screen.dart';
 import '../../provider/recently_watched_provider.dart';
@@ -210,6 +211,34 @@ class _TvHomeScreenState extends State<TvHomeScreen> {
           TvMediaKind.series,
           CatalogList.popular,
         ),
+        // The regional Top 10s, after the world rows, movies first — the
+        // same rows, titles and language order as the phone's Home. A
+        // regional hit in the world rows too is not a repeat to hide, so
+        // these sit outside the world Top 10 badge set on purpose; empty
+        // rows are left out by the browse view. No See all: the phone's
+        // regional rows have none either.
+        for (final language in RegionalLanguage.values)
+          if ((data.regionalMovies[language.code] ?? const <TvMediaItem>[])
+              .isNotEmpty)
+            TvTopTenRow(
+              title: tr(
+                'top_10_regional_movies',
+                namedArgs: <String, String>{'language': language.name},
+              ),
+              scopeId: 'home-top-regional-movies-${language.code}',
+              items: data.regionalMovies[language.code]!,
+            ),
+        for (final language in RegionalLanguage.values)
+          if ((data.regionalSeries[language.code] ?? const <TvMediaItem>[])
+              .isNotEmpty)
+            TvTopTenRow(
+              title: tr(
+                'top_10_regional_series',
+                namedArgs: <String, String>{'language': language.name},
+              ),
+              scopeId: 'home-top-regional-series-${language.code}',
+              items: data.regionalSeries[language.code]!,
+            ),
       ],
     );
   }

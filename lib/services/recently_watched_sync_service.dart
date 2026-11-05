@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../controllers/recently_watched_database_controller.dart';
 import '../models/recently_watched.dart';
+import '../preferences/setting_preferences.dart';
 import 'sync_checkpoint.dart';
 
 enum RecentSyncStatus { idle, syncing, success, error }
@@ -32,6 +33,51 @@ Set<int> resolveCloudWinners({
     if (entry.value > localVersion) winners.add(entry.key);
   }
   return winners;
+}
+
+/// Seeds the local sticky-provider prefs from cloud rows that WON their
+/// merge — the step that makes cross-device resume work without touching
+/// either loader.
+///
+/// The loaders only ever read the local prefs
+/// ([SettingsProvider.getLastMovieProvider]/[getLastTvProvider]), so a
+/// provider that only exists in a synced row would never move to the front
+/// of the race. Seeding here writes exactly the same keys the player
+/// writes, so from the loader's point of view a synced provider is
+/// indistinguishable from one picked on this device. Callers pass only
+/// winners: a cloud row that lost to a newer local row must not overwrite
+/// the local sticky, which belongs to the newer local playback.
+/// Tombstones and provider-less rows seed nothing; a deleted title keeps
+/// whatever sticky it had, and an old record simply has no sticky, as
+/// today. Movies seed by movie id, episodes by series id (the TV loader's
+/// sticky is per series, not per episode).
+Future<void> seedStickyProvidersFromCloud({
+  required Iterable<RecentMovie> movies,
+  required Iterable<RecentEpisode> episodes,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  for (final movie in movies) {
+    final id = movie.id;
+    final code = movie.providerCode?.trim();
+    if (movie.isDeleted || id == null || code == null || code.isEmpty) {
+      continue;
+    }
+    await prefs.setString(
+      '${SettingsPreferences.lastMovieProviderPrefix}$id',
+      code,
+    );
+  }
+  for (final episode in episodes) {
+    final seriesId = episode.seriesId;
+    final code = episode.providerCode?.trim();
+    if (episode.isDeleted || seriesId == null || code == null || code.isEmpty) {
+      continue;
+    }
+    await prefs.setString(
+      '${SettingsPreferences.lastTvProviderPrefix}$seriesId',
+      code,
+    );
+  }
 }
 
 /// Keeps the home screen's "continue watching" rows in step across a signed-in
@@ -253,8 +299,13 @@ class RecentlyWatchedSyncService {
       },
     );
 
-    await _movieDb.upsertFromCloud(
-      [for (final id in winners) cloudById[id]!],
+    final winningMovies = [for (final id in winners) cloudById[id]!];
+    await _movieDb.upsertFromCloud(winningMovies);
+    // After the rows land locally, so the loaders see the same sticky a
+    // locally played title would have left behind.
+    await seedStickyProvidersFromCloud(
+      movies: winningMovies,
+      episodes: const <RecentEpisode>[],
     );
   }
 
@@ -296,8 +347,11 @@ class RecentlyWatchedSyncService {
       },
     );
 
-    await _episodeDb.upsertFromCloud(
-      [for (final id in winners) cloudById[id]!],
+    final winningEpisodes = [for (final id in winners) cloudById[id]!];
+    await _episodeDb.upsertFromCloud(winningEpisodes);
+    await seedStickyProvidersFromCloud(
+      movies: const <RecentMovie>[],
+      episodes: winningEpisodes,
     );
   }
 

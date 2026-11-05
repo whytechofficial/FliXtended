@@ -42,6 +42,7 @@ class TV {
   String? originalLanguage;
   String? originalName;
   List<int>? genreIds;
+  List<String>? originCountry;
   String? backdropPath;
   String? overview;
   String? firstAirDate;
@@ -58,6 +59,7 @@ class TV {
     this.originalLanguage,
     this.originalName,
     this.genreIds,
+    this.originCountry,
     this.backdropPath,
     this.overview,
     this.firstAirDate,
@@ -79,7 +81,9 @@ class TV {
     overview = json['overview'];
     firstAirDate = json['first_air_date'];
     genreIds = parseGenreIds(json['genre_ids']);
-    // originCountry = json['origin_country'];
+    originCountry = (json['origin_country'] as List?)
+        ?.whereType<String>()
+        .toList(growable: false);
   }
 
   Map<String, dynamic> toJson() {
@@ -94,10 +98,10 @@ class TV {
     data['original_language'] = originalLanguage;
     data['original_title'] = originalName;
     if (genreIds != null) data['genre_ids'] = genreIds;
+    if (originCountry != null) data['origin_country'] = originCountry;
     data['backdrop_path'] = backdropPath;
     data['overview'] = overview;
     data['first_air_date'] = firstAirDate;
-    // data['origin_country'] = originCountry;
     return data;
   }
 
@@ -151,6 +155,7 @@ class TVDetails {
   int? numberOfSeasons;
   int? numberOfEpisodes;
   int? id;
+  num? voteAverage;
   String? backdropPath;
   List<ProductionCompanies>? productionCompanies;
   List<ProductionCountries>? productionCountries;
@@ -173,6 +178,7 @@ class TVDetails {
     this.productionCountries,
     this.spokenLanguages,
     this.id,
+    this.voteAverage,
     this.backdropPath,
     this.createdBy,
     this.seasons,
@@ -184,6 +190,7 @@ class TVDetails {
     tagline = json['tagline'];
     status = json['status'];
     id = json['id'];
+    voteAverage = json['vote_average'];
     backdropPath = json['backdrop_path'];
     originalTitle = json['original_name'];
     numberOfEpisodes = json['number_of_episodes'];
@@ -242,6 +249,7 @@ class TVDetails {
       data['production_countries'] =
           productionCountries?.map((v) => v.toJson()).toList();
     }
+    if (voteAverage != null) data['vote_average'] = voteAverage;
     return data;
   }
 }

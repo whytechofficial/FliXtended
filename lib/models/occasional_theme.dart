@@ -428,6 +428,16 @@ class OccasionalTheme {
             darkBackground: Color(0xFF1A0D16),
             effectType: OccasionalEffectType.sparkles,
           ),
+        'spring' => const _OccasionalThemePreset(
+            isBuiltIn: true,
+            displayName: 'Spring',
+            primary: Color(0xFF66BB6A),
+            secondary: Color(0xFFF48FB1),
+            tertiary: Color(0xFFFFCA28),
+            lightBackground: Color(0xFFF9FBF2),
+            darkBackground: Color(0xFF0E150C),
+            effectType: OccasionalEffectType.petals,
+          ),
         _ => const _OccasionalThemePreset(
             displayName: '',
             primary: Color(0xFFF97316),
@@ -458,6 +468,102 @@ class OccasionalThemeCatalog {
         defaultThemeId = '',
         schemaVersion = 2,
         themes = const <OccasionalTheme>[];
+
+  /// The seasons the app carries itself, for when no remote catalog is in
+  /// force. Upstream's themes only ever arrive through Remote Config, so
+  /// without this a FliXtended install with an empty remote catalog shows
+  /// no season at all — and the settings switch hides with it. Only
+  /// fixed-date seasons live here; movable ones (Easter, Eid, Diwali)
+  /// still need exact dates from a remote catalog.
+  factory OccasionalThemeCatalog.builtIn({DateTime? now}) {
+    final reference = (now ?? DateTime.now()).toUtc();
+    const seasons = <({String id, int startMonth, int startDay, int endMonth, int endDay})>[
+      (id: 'halloween', startMonth: 10, startDay: 15, endMonth: 11, endDay: 5),
+      (id: 'christmas', startMonth: 12, startDay: 1, endMonth: 12, endDay: 27),
+      (id: 'new_year', startMonth: 12, startDay: 28, endMonth: 1, endDay: 3),
+      (id: 'valentines', startMonth: 2, startDay: 7, endMonth: 2, endDay: 15),
+      (id: 'spring', startMonth: 3, startDay: 1, endMonth: 5, endDay: 31),
+      (
+        id: 'ethiopian_new_year',
+        startMonth: 9,
+        startDay: 10,
+        endMonth: 9,
+        endDay: 13,
+      ),
+    ];
+    final themes = seasons.map((season) {
+      final (start, end) = _seasonWindow(
+        reference,
+        season.startMonth,
+        season.startDay,
+        season.endMonth,
+        season.endDay,
+      );
+      // Colors and effect come from the built-in preset for the id; the
+      // JSON only adds the window and switches the effect on.
+      return OccasionalTheme.fromJson(<String, dynamic>{
+        'id': season.id,
+        'enabled': true,
+        'user_selectable': true,
+        'priority': 0,
+        'starts_at': start.toIso8601String(),
+        'ends_at': end.toIso8601String(),
+        'effect': {'enabled': true},
+      });
+    }).toList(growable: false);
+    return OccasionalThemeCatalog(
+      enabled: true,
+      allowUserSelection: true,
+      effectsEnabled: true,
+      allowUserEffectsToggle: true,
+      themes: themes,
+    );
+  }
+
+  /// The catalog to actually use: an enabled remote one wins wholesale,
+  /// anything else falls back to the built-in seasons. An explicit remote
+  /// disable is therefore still respected when it arrives through
+  /// applyRemoteOccasionalTheme — this only fills the gap when no enabled
+  /// remote catalog exists.
+  static OccasionalThemeCatalog withBuiltInFallback(
+    OccasionalThemeCatalog cached, {
+    DateTime? now,
+  }) =>
+      cached.enabled ? cached : OccasionalThemeCatalog.builtIn(now: now);
+
+  /// The window for a fixed season: the instance containing [now], or the
+  /// next upcoming one. Year-spanning seasons (New Year) end in the year
+  /// after they start.
+  static (DateTime, DateTime) _seasonWindow(
+    DateTime now,
+    int startMonth,
+    int startDay,
+    int endMonth,
+    int endDay,
+  ) {
+    final spanning =
+        endMonth < startMonth || (endMonth == startMonth && endDay < startDay);
+    DateTime startFor(int year) => DateTime.utc(year, startMonth, startDay);
+    DateTime endFor(int year) => DateTime.utc(
+          year + (spanning ? 1 : 0),
+          endMonth,
+          endDay,
+          23,
+          59,
+          59,
+        );
+    final year = now.year;
+    for (final candidate in [year - 1, year, year + 1]) {
+      final start = startFor(candidate);
+      final end = endFor(candidate);
+      if (!now.isBefore(start) && !now.isAfter(end)) return (start, end);
+    }
+    for (final candidate in [year, year + 1, year + 2]) {
+      final start = startFor(candidate);
+      if (now.isBefore(start)) return (start, endFor(candidate));
+    }
+    throw StateError('No season window for $startMonth/$startDay');
+  }
 
   final bool enabled;
   final bool allowUserSelection;

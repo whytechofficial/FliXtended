@@ -82,12 +82,18 @@ class _TvProviderOrderContentState extends State<TvProviderOrderContent> {
     }
     if (!mounted) return;
     setState(() {
-      // Retain the last catalog on retry failure. The direct source is still
-      // usable if the first discovery fails; saved priorities stay untouched.
+      // Retain the last catalog on retry failure. The direct sources are
+      // still usable if the first discovery fails; saved priorities stay
+      // untouched. The app-known direct providers join the discovered
+      // catalog here, the same set the playback picker offers, so they
+      // show for reordering too; discovery can never supply them.
       if (discovered != null || _providers.isEmpty) {
         _providers = settings.orderStreamProviders(<VideoProvider>[
           ...?discovered,
           VideoProvider.directVixSrc,
+          VideoProvider.directCastle,
+          VideoProvider.directNetMirror,
+          VideoProvider.directMxPlayer,
         ]);
       }
       _discoveryFailed = discovered == null;

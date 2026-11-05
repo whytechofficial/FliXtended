@@ -82,6 +82,14 @@ class _FakeSource implements HomeFeedSource {
   @override
   Future<List<MediaItem>> genre(MediaKind kind, int genreId) async =>
       _movies([70, 71]);
+
+  @override
+  Future<List<MediaItem>> regionalMovies(String languageCode) async =>
+      const <MediaItem>[];
+
+  @override
+  Future<List<MediaItem>> regionalSeries(String languageCode) async =>
+      const <MediaItem>[];
 }
 
 class _FakeRecent extends ChangeNotifier implements RecentProvider {
@@ -483,7 +491,7 @@ void main() {
           .map((text) => text.data);
       expect(accentTexts, isEmpty);
       expect(find.text('CONTINUE_WATCHING'), findsOneWidget);
-      expect(find.text('FLIXQUEST'), findsOneWidget);
+      expect(find.text('FLIXTENDED'), findsOneWidget);
       final accentIcons = tester
           .widgetList<Icon>(find.byType(Icon))
           .where((icon) => icon.color == accent);
@@ -668,6 +676,49 @@ void main() {
       feed: HomeFeed(filter: HomeFilter.series, categories: feed.categories),
     );
     expect(series.whereType<CategorySection>().single.kicker, isNull);
+  });
+
+  testWidgets('regional Top 10 rows show in language order', (tester) async {
+    final feed = HomeFeed(
+      filter: HomeFilter.movies,
+      regionalMovies: <String, List<MediaItem>>{
+        'ml': _movies([1, 2, 3]),
+        'ta': _movies([4, 5]),
+      },
+    );
+    final rows = await _rows(tester, filter: HomeFilter.movies, feed: feed);
+    final regional = rows.whereType<TopTenRow>().toList();
+    expect(regional, hasLength(2));
+    expect(
+      regional[0].items.map((item) => item.id),
+      [1, 2, 3],
+    );
+    expect(
+      regional[1].items.map((item) => item.id),
+      [4, 5],
+    );
+  });
+
+  testWidgets('regional series Top 10 rows show in language order',
+      (tester) async {
+    final feed = HomeFeed(
+      filter: HomeFilter.series,
+      regionalSeries: <String, List<MediaItem>>{
+        'ml': _series([1, 2, 3]),
+        'ta': _series([4, 5]),
+      },
+    );
+    final rows = await _rows(tester, filter: HomeFilter.series, feed: feed);
+    final regional = rows.whereType<TopTenRow>().toList();
+    expect(regional, hasLength(2));
+    expect(
+      regional[0].items.map((item) => item.id),
+      [1, 2, 3],
+    );
+    expect(
+      regional[1].items.map((item) => item.id),
+      [4, 5],
+    );
   });
 
   testWidgets('a flick sideways moves the hero on, and back', (tester) async {

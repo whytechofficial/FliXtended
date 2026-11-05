@@ -1,17 +1,21 @@
 import 'dart:async';
 
+import 'package:flixquest/catalog/media_item.dart';
 import 'package:flixquest/catalog/up_next.dart';
 import 'package:flixquest/constants/app_constants.dart';
 import 'package:flixquest/constants/theme_data.dart';
+import 'package:flixquest/controllers/named_lists_controller.dart';
 import 'package:flixquest/mobile/screens/my_flixquest_screen.dart';
 import 'package:flixquest/mobile/widgets/page_kit.dart';
 import 'package:flixquest/models/app_colors.dart';
 import 'package:flixquest/models/movie.dart';
+import 'package:flixquest/models/named_list.dart';
 import 'package:flixquest/models/offline_download.dart';
 import 'package:flixquest/models/recently_watched.dart';
 import 'package:flixquest/models/tv.dart';
 import 'package:flixquest/provider/app_dependency_provider.dart';
 import 'package:flixquest/provider/bookmark_provider.dart';
+import 'package:flixquest/provider/named_lists_provider.dart';
 import 'package:flixquest/provider/offline_download_provider.dart';
 import 'package:flixquest/provider/recently_watched_provider.dart';
 import 'package:flixquest/provider/settings_provider.dart';
@@ -70,6 +74,50 @@ class _FakeWellness extends ChangeNotifier implements WellnessProvider {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeNamedListsStore implements NamedListsStore {
+  @override
+  Future<List<NamedList>> getLists() async => const <NamedList>[];
+
+  @override
+  Future<NamedList> insertList(String name, {String description = ''}) async =>
+      NamedList(
+        id: 'fake',
+        name: name,
+        description: description,
+        createdAt: '2026-11-02',
+      );
+
+  @override
+  Future<void> renameList(String id, String name) async {}
+
+  @override
+  Future<void> updateListDetails(
+    String id,
+    String name,
+    String description,
+  ) async {}
+
+  @override
+  Future<void> deleteList(String id) async {}
+
+  @override
+  Future<void> insertItem(String listId, NamedListItem item) async {}
+
+  @override
+  Future<void> deleteItem(String listId, MediaKind kind, int tmdbId) async {}
+
+  @override
+  Future<void> insertFullList(NamedList list) async {}
+
+  @override
+  Future<void> updateListRow(
+    String id,
+    String name,
+    String updatedAt,
+    String description,
+  ) async {}
 }
 
 class _FakeGateway implements OfflineDownloadGateway {
@@ -150,6 +198,9 @@ Future<void> _pump(
         ChangeNotifierProvider<BookmarkProvider>.value(
           value: _FakeBookmarks(movies: saved),
         ),
+        ChangeNotifierProvider<NamedListsProvider>.value(
+          value: NamedListsProvider(store: _FakeNamedListsStore()),
+        ),
         ChangeNotifierProvider<WellnessProvider>.value(value: _FakeWellness()),
         ChangeNotifierProvider(
           create: (_) => OfflineDownloadProvider(
@@ -189,11 +240,12 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('guest'), findsWidgets);
     expect(find.text('login_signup'), findsOneWidget);
-    // Only the three newest downloads, and "See all" for the rest.
+    // The downloads card row scrolls sideways, so every download shows;
+    // "See all" still opens the full page.
     expect(find.text('first'), findsOneWidget);
     expect(find.text('second'), findsOneWidget);
     expect(find.text('third'), findsOneWidget);
-    expect(find.text('fourth'), findsNothing);
+    expect(find.text('fourth'), findsOneWidget);
     // A failed item is never shown as busy.
     final bars = tester.widgetList<LinearProgressIndicator>(
       find.byType(LinearProgressIndicator),

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flixquest/constants/app_constants.dart';
 import 'package:flixquest/provider/app_dependency_provider.dart';
 import 'package:flixquest/provider/settings_provider.dart';
+import 'package:flixquest/screens/common/update_download_manager.dart';
 import 'package:flixquest/screens/common/update_screen.dart';
 import 'package:flixquest/tv/widgets/tv_update_gate.dart';
 import 'package:flixquest/tv/widgets/tv_update_widgets.dart';
@@ -9,6 +12,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_download_manager/flutter_download_manager.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -70,14 +75,6 @@ void main() {
             (_) async => directory);
     config = AppDependencyProvider();
     release();
-    // Keep transfers queued: tests exercise the real manager's state transitions
-    // without downloading or launching an Android installer on the host.
-    DownloadManager(maxConcurrentTasks: 0);
-  });
-  tearDown(() async {
-    final manager = DownloadManager();
-    if (manager.getDownload(url) != null) await manager.removeDownload(url);
-    manager.maxConcurrentTasks = 2;
   });
 
   testWidgets('TV notice cannot be dismissed and opens the TV updater',
@@ -93,7 +90,7 @@ void main() {
     ]))));
     await tester.pumpAndSettle();
     expect(find.text('UPDATE AVAILABLE'), findsOneWidget);
-    expect(find.text('FlixQuest 4.2.0'), findsOneWidget);
+    expect(find.text('FliXtended 4.2.0'), findsOneWidget);
     expect(find.text('Not now'), findsNothing);
     await select(tester, 'Update');
     expect(tester.widget<UpdateScreen>(find.byType(UpdateScreen)).television,
@@ -146,8 +143,9 @@ void main() {
         .pumpWidget(app(const UpdateScreen(isForced: true, television: true)));
     await tester.pumpAndSettle();
     await select(tester, 'What’s new');
-    expect(find.text('Better TV navigation\nMore reliable playback'),
-        findsOneWidget);
+    // The notes render line by line (each its own row), not as one block.
+    expect(find.text('Better TV navigation'), findsOneWidget);
+    expect(find.text('More reliable playback'), findsOneWidget);
     expect(
         find.descendant(
             of: find.byType(TvChangelogView),
@@ -185,11 +183,17 @@ void main() {
 
   testWidgets('TV download supports pause, resume, failure retry and delete',
       (tester) async {
-    final manager = DownloadManager();
+    // A client that never answers keeps the transfer in flight while the
+    // test walks its states, instead of racing a real network fetch.
+    final manager = UpdateDownloadManager(
+      clientFactory: () => MockClient((_) => Completer<http.Response>().future),
+    );
     await tester.runAsync(
         () => manager.addDownload(url, '$directory/tv-update-test.apk'));
-    await tester
-        .pumpWidget(app(const UpdateScreen(isForced: false, television: true)));
+    await tester.pumpWidget(app(UpdateScreen(
+        isForced: false,
+        television: true,
+        downloadManager: manager)));
     await tester.pumpAndSettle();
     await select(tester, 'Pause');
     expect(manager.getDownload(url)!.status.value, DownloadStatus.paused);
@@ -208,7 +212,9 @@ void main() {
       }
     });
     await tester.pumpAndSettle();
-    expect(manager.getDownload(url)!.status.value, DownloadStatus.queued);
+    // The app's own downloader starts transfers at once; there is no queue
+    // state for a fresh attempt the way the old package manager had.
+    expect(manager.getDownload(url)!.status.value, DownloadStatus.downloading);
     manager.getDownload(url)!.status.value = DownloadStatus.completed;
     manager.getDownload(url)!.progress.value = 1;
     await tester.pumpAndSettle();
@@ -222,6 +228,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Download update'), findsOneWidget);
     expect(manager.getDownload(url), isNull);
+    // The never-answering client leaves each attempt's 30 s send timeout
+    // pending; flush them so the test ends with no live timers.
+    await tester.pump(const Duration(seconds: 31));
     expect(tester.takeException(), isNull);
   });
 

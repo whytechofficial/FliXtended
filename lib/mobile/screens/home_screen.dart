@@ -850,6 +850,32 @@ List<Widget> homeRows(
           titled(kind, 'popular_movies', 'popular_series'),
           feed.of(kind).popular,
         ),
+    // The regional Top 10s, after the world rows: titles in the viewer's
+    // own languages, movies and series each in their own rows. They sit
+    // outside the lead-row dedup above on purpose — a regional hit
+    // belonging in the world rows too is not a repeat to hide.
+    if (filter.shows(MediaKind.movie))
+      for (final language in RegionalLanguage.values)
+        if ((feed.regionalMovies[language.code] ?? const <MediaItem>[])
+            .isNotEmpty)
+          TopTenRow(
+            title: tr(
+              'top_10_regional_movies',
+              namedArgs: <String, String>{'language': language.name},
+            ),
+            items: feed.regionalMovies[language.code]!,
+          ),
+    if (filter.shows(MediaKind.series))
+      for (final language in RegionalLanguage.values)
+        if ((feed.regionalSeries[language.code] ?? const <MediaItem>[])
+            .isNotEmpty)
+          TopTenRow(
+            title: tr(
+              'top_10_regional_series',
+              namedArgs: <String, String>{'language': language.name},
+            ),
+            items: feed.regionalSeries[language.code]!,
+          ),
     for (final kind in kinds)
       for (final shelf in feed.of(kind).serviceShelves)
         PosterRow(

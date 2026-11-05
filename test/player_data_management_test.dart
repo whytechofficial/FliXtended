@@ -67,6 +67,16 @@ class _Recent extends ChangeNotifier implements RecentProvider {
   RecentEpisode? episode;
   Future<void> write = Future<void>.value();
 
+  // The save path reads the stored rows to preserve an existing sticky
+  // provider when a save carries none; mirror the stored row here.
+  @override
+  List<RecentMovie> get movies =>
+      movie == null ? <RecentMovie>[] : <RecentMovie>[movie!];
+
+  @override
+  List<RecentEpisode> get episodes =>
+      episode == null ? <RecentEpisode>[] : <RecentEpisode>[episode!];
+
   @override
   Future<void> addMovie(RecentMovie value) {
     movie = value;

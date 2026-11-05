@@ -113,8 +113,8 @@ void main() {
       _item(2, TvMediaKind.series),
       _item(3, TvMediaKind.movie),
     ]);
-    expect(find.text('Movies in My List'), findsOneWidget);
-    expect(find.text('Series in My List'), findsOneWidget);
+    expect(find.text('Movies in Watchlist'), findsOneWidget);
+    expect(find.text('Series in Watchlist'), findsOneWidget);
     expect(find.text('See all'), findsNothing);
     expect(_focused, 'library-movies:movie:1');
 
@@ -132,7 +132,7 @@ void main() {
       ],
       opened: opened,
     );
-    expect(find.text('Series in My List'), findsNothing);
+    expect(find.text('Series in Watchlist'), findsNothing);
     expect(find.text('See all'), findsOneWidget);
 
     await _press(tester, LogicalKeyboardKey.arrowDown);

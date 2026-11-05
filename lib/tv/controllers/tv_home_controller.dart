@@ -1,4 +1,6 @@
+import '../../api/endpoints.dart';
 import '../../catalog/catalog_controller.dart';
+import '../../catalog/home_feed_controller.dart' show RegionalLanguage;
 import '../../functions/network.dart';
 import '../../provider/app_dependency_provider.dart';
 import '../../provider/settings_provider.dart';
@@ -12,6 +14,8 @@ class TvHomeData {
     required this.trendingSeries,
     this.topMovies = const <TvMediaItem>[],
     this.topSeries = const <TvMediaItem>[],
+    this.regionalMovies = const <String, List<TvMediaItem>>{},
+    this.regionalSeries = const <String, List<TvMediaItem>>{},
   });
 
   final List<TvMediaItem> popularMovies;
@@ -22,6 +26,13 @@ class TvHomeData {
   /// Today's ten most watched, for the Top 10 rows.
   final List<TvMediaItem> topMovies;
   final List<TvMediaItem> topSeries;
+
+  /// The regional Top 10 rows, by [RegionalLanguage] code — the same rows
+  /// and order as the phone's Home, fed by the same discover queries.
+  /// Extras like the Top 10s: a missing one leaves the rest standing, and
+  /// they do not count towards [isEmpty].
+  final Map<String, List<TvMediaItem>> regionalMovies;
+  final Map<String, List<TvMediaItem>> regionalSeries;
 
   TvMediaItem? get hero {
     if (trendingMovies.isNotEmpty) return trendingMovies.first;
@@ -88,6 +99,31 @@ class TvHomeController {
       onError: (Object _) => <TvMediaItem>[],
     );
 
+    // The regional Top 10s: one discover per language and kind, each
+    // failing on its own like every other extra row.
+    final regionalMoviesFutures = <Future<List<TvMediaItem>>>[
+      for (final regional in RegionalLanguage.values)
+        fetchMovies(
+          Endpoints.discoverMoviesByLanguageUrl(language, regional.code),
+          settings.enableProxy,
+          dependencies.tmdbProxy,
+        ).then(
+          (items) => items.take(10).map(TvMediaItem.fromMovie).toList(),
+          onError: (Object _) => <TvMediaItem>[],
+        ),
+    ];
+    final regionalSeriesFutures = <Future<List<TvMediaItem>>>[
+      for (final regional in RegionalLanguage.values)
+        fetchTV(
+          Endpoints.discoverSeriesByLanguageUrl(language, regional.code),
+          settings.enableProxy,
+          dependencies.tmdbProxy,
+        ).then(
+          (items) => items.take(10).map(TvMediaItem.fromSeries).toList(),
+          onError: (Object _) => <TvMediaItem>[],
+        ),
+    ];
+
     final popularMovies = await popularMoviesFuture;
     final trendingMovies = await trendingMoviesFuture;
     final popularSeries = await popularSeriesFuture;
@@ -104,6 +140,16 @@ class TvHomeController {
           trendingSeries.map(TvMediaItem.fromSeries).toList(growable: false),
       topMovies: await topMoviesFuture,
       topSeries: await topSeriesFuture,
+      regionalMovies: <String, List<TvMediaItem>>{
+        for (var i = 0; i < RegionalLanguage.values.length; i++)
+          RegionalLanguage.values[i].code:
+              (await regionalMoviesFutures[i]).toList(growable: false),
+      },
+      regionalSeries: <String, List<TvMediaItem>>{
+        for (var i = 0; i < RegionalLanguage.values.length; i++)
+          RegionalLanguage.values[i].code:
+              (await regionalSeriesFutures[i]).toList(growable: false),
+      },
     );
   }
 }

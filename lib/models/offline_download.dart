@@ -34,6 +34,7 @@ class OfflineDownload {
     this.contentId,
     this.seasonNumber,
     this.episodeNumber,
+    this.episodeId,
     this.offlineSubtitlePath,
     this.offlineSubtitleName,
     this.audioTrackName,
@@ -55,6 +56,11 @@ class OfflineDownload {
   final int? contentId;
   final int? seasonNumber;
   final int? episodeNumber;
+
+  /// The TMDB episode id, when the download was enqueued with one
+  /// (post-beta64 TV downloads). Null for older downloads: their records
+  /// predate the field, so no synced row can be keyed for them.
+  final int? episodeId;
   final String? offlineSubtitlePath;
   final String? offlineSubtitleName;
   final String? audioTrackName;
@@ -95,6 +101,7 @@ class OfflineDownload {
       contentId: contentId,
       seasonNumber: seasonNumber,
       episodeNumber: episodeNumber,
+      episodeId: episodeId,
       offlineSubtitlePath: offlineSubtitlePath,
       offlineSubtitleName: offlineSubtitleName,
       audioTrackName: audioTrackName,
@@ -128,6 +135,7 @@ class OfflineDownload {
       contentId: value<num>('contentId')?.toInt(),
       seasonNumber: value<num>('seasonNumber')?.toInt(),
       episodeNumber: value<num>('episodeNumber')?.toInt(),
+      episodeId: value<num>('episodeId')?.toInt(),
       offlineSubtitlePath: value<String>('offlineSubtitlePath'),
       offlineSubtitleName: value<String>('offlineSubtitleName'),
       audioTrackName: value<String>('audioTrackName'),
@@ -164,6 +172,7 @@ class OfflineDownloadRequest {
     this.contentId,
     this.seasonNumber,
     this.episodeNumber,
+    this.episodeId,
     this.subtitleTrackUrl,
     this.subtitleTrackName,
     this.subtitleTrackHeaders = const {},
@@ -183,6 +192,7 @@ class OfflineDownloadRequest {
   final int? contentId;
   final int? seasonNumber;
   final int? episodeNumber;
+  final int? episodeId;
   final String? subtitleTrackUrl;
   final String? subtitleTrackName;
   final Map<String, String> subtitleTrackHeaders;
@@ -204,6 +214,7 @@ class OfflineDownloadRequest {
         'contentId': contentId,
         'seasonNumber': seasonNumber,
         'episodeNumber': episodeNumber,
+        'episodeId': episodeId,
         'subtitleTrackUrl': subtitleTrackUrl,
         'subtitleTrackName': subtitleTrackName,
         'subtitleTrackHeaders': subtitleTrackHeaders,

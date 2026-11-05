@@ -8,10 +8,6 @@ import 'package:flixquest/preferences/setting_preferences.dart';
 import 'package:flixquest/provider/app_dependency_provider.dart';
 import 'package:flixquest/provider/settings_provider.dart';
 import 'package:flixquest/screens/common/settings.dart';
-import 'package:flixquest/services/tmdb_connectivity.dart';
-import 'package:flixquest/mobile/widgets/settings_kit.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -92,45 +88,4 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-      'mobile proxy control only turns an automatically detected proxy off',
-      (tester) async {
-    final original = TmdbConnectivity.instance;
-    final client = MockClient((request) async =>
-        request.url.host == 'proxy.example'
-            ? http.Response('{"images": {}}', 200)
-            : http.Response('<html>Blocked</html>', 451));
-    final connectivity =
-        TmdbConnectivity(client: client, hasNetwork: () async => true);
-    TmdbConnectivity.instance = connectivity;
-    final settings = SettingsProvider();
-    addTearDown(() {
-      settings.dispose();
-      connectivity.dispose();
-      TmdbConnectivity.instance = original;
-      client.close();
-    });
-    await _pumpSettings(tester, settings);
-    Finder proxyRow() => find.byWidgetPredicate((widget) =>
-        widget is SwitchRow && widget.label == 'Use proxy for TMDB fetch');
-    var row = tester.widget<SwitchRow>(proxyRow());
-    expect(row.value, isFalse);
-    expect(row.onChanged, isNull);
-
-    await connectivity.check('https://proxy.example');
-    await tester.pumpAndSettle();
-    row = tester.widget<SwitchRow>(proxyRow());
-    expect(row.value, isTrue);
-    expect(row.onChanged, isNotNull);
-    await tester.ensureVisible(proxyRow());
-    await tester
-        .tap(find.descendant(of: proxyRow(), matching: find.byType(Switch)));
-    await tester.pumpAndSettle();
-    row = tester.widget<SwitchRow>(proxyRow());
-    expect(settings.enableProxy, isFalse);
-    expect(row.onChanged, isNull);
-    await connectivity.check('https://proxy.example', networkChanged: true);
-    expect(settings.enableProxy, isFalse);
-    expect(tester.takeException(), isNull);
-  });
 }

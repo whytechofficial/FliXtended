@@ -426,7 +426,16 @@ class SettingsProvider with ChangeNotifier {
 
   Future<void> getStreamProviderOrder() async {
     _streamProviderOrder = await _settingsPreferences.getStreamProviderOrder();
+    _hasCustomStreamProviderOrder =
+        _settingsPreferences.hasCustomStreamProviderOrder();
   }
+
+  /// Whether the user explicitly arranged providers in the "Modify
+  /// providers order" dialog — the only order that wins entirely over
+  /// category adjustment. A migrated or default order is a base order
+  /// and still gets category-adjusted in the loaders.
+  bool _hasCustomStreamProviderOrder = false;
+  bool get hasCustomStreamProviderOrder => _hasCustomStreamProviderOrder;
 
   List<VideoProvider> orderStreamProviders(
     Iterable<VideoProvider> availableProviders,
@@ -437,12 +446,18 @@ class SettingsProvider with ChangeNotifier {
     );
   }
 
+  /// The dialog's save path — the ONLY caller — so saving here is the
+  /// explicit choice that opts out of category adjustment. The flag is
+  /// marked even when the saved order matches the current one: opening
+  /// the dialog and saving is itself the user owning the order.
   void setStreamProviderOrder(Iterable<VideoProvider> providers) {
     final codes = <String>{};
     for (final provider in providers) {
       codes.add(provider.codeName);
     }
     final value = codes.toList(growable: false);
+    _hasCustomStreamProviderOrder = true;
+    _settingsPreferences.setStreamProviderOrderCustom(true);
     if (_sameOrder(_streamProviderOrder, value)) return;
     _streamProviderOrder = value;
     _settingsPreferences.setStreamProviderOrder(value);
@@ -468,9 +483,32 @@ class SettingsProvider with ChangeNotifier {
   String? getLastMovieProvider(int movieId) =>
       _settingsPreferences.getLastMovieProvider(movieId);
 
+  /// Records the provider a title actually started playing on, so
+  /// Continue Watching resumes there instead of re-racing from the top
+  /// of the provider order. The race winner counts exactly like a
+  /// manually picked provider: a later manual switch overwrites it
+  /// through [setLastMovieProvider]/[setLastTvProvider], and a source
+  /// refresh never touches it (the refresh path records nothing). A
+  /// null or blank code, or a title without an id, records nothing.
+  Future<void> recordPlayedProvider({
+    required bool isTv,
+    required int? movieId,
+    required int? tvId,
+    required String? providerCode,
+  }) async {
+    final code = providerCode?.trim();
+    if (code == null || code.isEmpty) return;
+    if (isTv) {
+      if (tvId == null) return;
+      await setLastTvProvider(tvId, code);
+    } else {
+      if (movieId == null) return;
+      await setLastMovieProvider(movieId, code);
+    }
+  }
+
   /// Saves the offline playback position for a download, in milliseconds.
-  Future<void> setOfflineResumePosition(
-          String downloadId, int positionMs) =>
+  Future<void> setOfflineResumePosition(String downloadId, int positionMs) =>
       _settingsPreferences.setOfflineResumePosition(downloadId, positionMs);
 
   /// Returns the saved offline playback position for a download, in

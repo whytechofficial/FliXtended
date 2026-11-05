@@ -13,6 +13,7 @@ import 'package:flutter_downloader/flutter_downloader.dart';
 import 'constants/app_constants.dart';
 import 'functions/function.dart';
 import 'provider/bookmark_provider.dart';
+import 'provider/named_lists_provider.dart';
 import 'provider/recently_watched_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,6 +21,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'provider/settings_provider.dart';
 import 'provider/wellness_provider.dart';
 import 'services/bookmark_sync_service.dart';
+import 'services/named_lists_sync_service.dart';
 import 'services/recently_watched_sync_service.dart';
 import 'services/media_link_navigation_service.dart';
 import 'services/device_presentation_service.dart';
@@ -44,6 +46,7 @@ bool isTablet(BuildContext context) {
 SettingsProvider settingsProvider = SettingsProvider();
 RecentProvider recentProvider = RecentProvider();
 BookmarkProvider bookmarkProvider = BookmarkProvider();
+NamedListsProvider namedListsProvider = NamedListsProvider();
 AppDependencyProvider appDependencyProvider = AppDependencyProvider();
 // WellnessProvider moved to local to avoid top-level Firebase access.
 bool _firebaseReady = false;
@@ -211,6 +214,9 @@ Future<DevicePresentation> appInitialize({
     await bookmarkProvider.fetchBookmarks().timeout(const Duration(seconds: 10));
   } catch (_) {}
   try {
+    await namedListsProvider.fetchLists().timeout(const Duration(seconds: 10));
+  } catch (_) {}
+  try {
     final wp = WellnessProvider.instance;
     await wp.initialize().timeout(const Duration(seconds: 15));
   } catch (_) {}
@@ -228,6 +234,9 @@ Future<DevicePresentation> appInitialize({
     } catch (_) {}
     try {
       await RecentlyWatchedSyncService.instance.init().timeout(const Duration(seconds: 10));
+    } catch (_) {}
+    try {
+      await NamedListsSyncService.instance.init().timeout(const Duration(seconds: 10));
     } catch (_) {}
   } else {
   }
@@ -277,6 +286,7 @@ void main() async {
       settingsProvider: settingsProvider,
       recentProvider: recentProvider,
       bookmarkProvider: bookmarkProvider,
+      namedListsProvider: namedListsProvider,
       appDependencyProvider: appDependencyProvider,
       devicePresentation: devicePresentation,
     ),

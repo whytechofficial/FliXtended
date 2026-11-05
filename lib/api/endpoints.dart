@@ -50,6 +50,18 @@ class Endpoints {
     return url;
   }
 
+  static String discoverMoviesByLanguageUrl(String l, String originalLanguage) {
+    return '$TMDB_API_BASE_URL/discover/movie?api_key=$TMDB_API_KEY'
+        '&language=$l&sort_by=popularity.desc&include_video=false&page=1'
+        '&with_original_language=$originalLanguage';
+  }
+
+  static String discoverSeriesByLanguageUrl(String l, String originalLanguage) {
+    return '$TMDB_API_BASE_URL/discover/tv?api_key=$TMDB_API_KEY'
+        '&language=$l&sort_by=popularity.desc&page=1'
+        '&with_original_language=$originalLanguage';
+  }
+
   static String nowPlayingMoviesUrl(int page, String l) {
     return '$TMDB_API_BASE_URL'
         '/movie/now_playing?api_key='

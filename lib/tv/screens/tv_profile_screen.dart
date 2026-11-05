@@ -11,6 +11,7 @@ import '../focus/tv_screen_focus_controller.dart';
 import '../widgets/tv_dialog.dart';
 import '../widgets/tv_page_header.dart';
 import '../widgets/tv_pill_button.dart';
+import 'tv_account_screens.dart';
 
 class TvProfileScreen extends StatelessWidget {
   const TvProfileScreen({
@@ -118,6 +119,19 @@ class _ProfileLayout extends StatelessWidget {
   final bool loading;
   final bool isGuest;
   final TvScreenFocusController? focusController;
+
+  /// Opens Manage account, then hands focus back where it was.
+  Future<void> _openManageAccount(BuildContext context) async {
+    final previous = FocusManager.instance.primaryFocus;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const TvManageAccountScreen()),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (previous?.context != null && previous!.canRequestFocus) {
+        previous.requestFocus();
+      }
+    });
+  }
 
   Widget _profileImage(BuildContext context, {required double size}) {
     final palette = TvPalette.of(context);
@@ -237,8 +251,17 @@ class _ProfileLayout extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: compact ? 18 : 26),
+                        // The page opens on the first button.
+                        if (!isGuest)
+                          TvPillButton(
+                            focusNode: signOutFocusNode,
+                            label: tr('tv_manage_account'),
+                            icon: PhosphorIcons.userGear(),
+                            onActivate: () => _openManageAccount(context),
+                          ),
+                        if (!isGuest) const SizedBox(height: 12),
                         TvPillButton(
-                          focusNode: signOutFocusNode,
+                          focusNode: isGuest ? signOutFocusNode : null,
                           label: tr('sign_out'),
                           icon: PhosphorIcons.signOut(),
                           onActivate: onSignOut,
@@ -304,8 +327,9 @@ class _ProfileFocusEntry extends StatefulWidget {
 }
 
 class _ProfileFocusEntryState extends State<_ProfileFocusEntry> {
+  /// The first button: Manage account when signed in, else Sign out.
   final FocusNode _signOutFocusNode =
-      FocusNode(debugLabel: 'TV profile sign out');
+      FocusNode(debugLabel: 'TV profile first action');
 
   @override
   void initState() {

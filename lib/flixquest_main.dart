@@ -18,6 +18,7 @@ import 'screens/user/user_state.dart';
 import 'widgets/occasional_effect_overlay.dart';
 import 'widgets/app_presentation.dart';
 import 'provider/bookmark_provider.dart';
+import 'provider/named_lists_provider.dart';
 import 'provider/offline_download_provider.dart';
 import 'provider/wellness_provider.dart';
 import 'services/in_app_messaging_service.dart';
@@ -38,6 +39,7 @@ class FlixQuest extends StatefulWidget {
       {required this.settingsProvider,
       required this.recentProvider,
       required this.bookmarkProvider,
+      required this.namedListsProvider,
       required this.appDependencyProvider,
       required this.devicePresentation,
       super.key});
@@ -45,6 +47,7 @@ class FlixQuest extends StatefulWidget {
   final SettingsProvider settingsProvider;
   final RecentProvider recentProvider;
   final BookmarkProvider bookmarkProvider;
+  final NamedListsProvider namedListsProvider;
   final AppDependencyProvider appDependencyProvider;
   final DevicePresentation devicePresentation;
 
@@ -285,6 +288,9 @@ class _FlixQuestState extends State<FlixQuest>
             return widget.bookmarkProvider;
           }),
           ChangeNotifierProvider(create: (_) {
+            return widget.namedListsProvider;
+          }),
+          ChangeNotifierProvider(create: (_) {
             return widget.appDependencyProvider;
           }),
           ChangeNotifierProvider(
@@ -353,15 +359,20 @@ class _FlixQuestState extends State<FlixQuest>
                         else
                           MobileUpdateGate(
                               child: child ?? const SizedBox.shrink()),
-                        if (devicePresentation != DevicePresentation.television)
-                          OccasionalEffectOverlay(
-                            theme: appDependencyProvider.activeOccasionalTheme,
-                            enabled: appDependencyProvider
-                                .shouldShowOccasionalEffects,
-                            visibilityListenable: appDependencyProvider,
-                            visibilityResolver: () => appDependencyProvider
-                                .shouldShowOccasionalEffects,
-                          ),
+                        // Mounted for television too, same as mobile: the
+                        // overlay is non-interactive and its visibility
+                        // wiring (shouldShowOccasionalEffects) already
+                        // suppresses it where effects do not belong, so TV
+                        // gets the seasonal effects (Diwali from Nov 6)
+                        // that mobile already shows.
+                        OccasionalEffectOverlay(
+                          theme: appDependencyProvider.activeOccasionalTheme,
+                          enabled: appDependencyProvider
+                              .shouldShowOccasionalEffects,
+                          visibilityListenable: appDependencyProvider,
+                          visibilityResolver: () => appDependencyProvider
+                              .shouldShowOccasionalEffects,
+                        ),
                       ],
                     ),
                   ),

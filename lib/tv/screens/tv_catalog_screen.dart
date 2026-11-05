@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
+import '../../catalog/regional_language.dart';
 import '../../provider/app_dependency_provider.dart';
 import '../../provider/settings_provider.dart';
 import '../../widgets/common_widgets.dart'
@@ -273,6 +274,22 @@ class _TvCatalogScreenState extends State<TvCatalogScreen> {
           // The same catalog as the service's tile.
           seeAll: TvRowSeeAll(onActivate: () => _openService(shelf.service)),
         ),
+      // The regional Top 10s, after the world rows — the same rows,
+      // titles and language order as TV Home. No See all: the phone's
+      // regional rows have none either. Empty rows are left out by the
+      // browse view; the guard mirrors Home's.
+      for (final language in RegionalLanguage.values)
+        if ((data.regional[language.code] ?? const <TvMediaItem>[])
+            .isNotEmpty)
+          TvTopTenRow(
+            title: tr(
+              _isMovie ? 'top_10_regional_movies' : 'top_10_regional_series',
+              namedArgs: <String, String>{'language': language.name},
+            ),
+            scopeId:
+                '$kind-top-regional-${_isMovie ? 'movies' : 'series'}-${language.code}',
+            items: data.regional[language.code]!,
+          ),
     ];
   }
 }

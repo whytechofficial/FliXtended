@@ -12,8 +12,10 @@
 ///
 /// flix.quest is this app's own short form of a TMDB address: `/m/550` is a film, and `/t/1396`,
 /// `/t/1396.4` and `/t/1396.4.13` are a series, one of its seasons and one of its episodes, and
-/// `/l/51` is a live TV channel. Being our domain, it is the one Android verifies, so these open the
-/// app straight from a tap.
+/// `/l/51` is a live TV channel. Shares now use flixtended.pages.dev, the site's own domain, in
+/// exactly the same shape; flix.quest addresses still parse, for links shared before the switch.
+/// Being our domain, flixtended.pages.dev is the one Android verifies, so these open the app
+/// straight from a tap.
 class MediaLink {
   const MediaLink._();
 
@@ -22,12 +24,16 @@ class MediaLink {
   static const String _imdb = 'imdb.com';
   static const String _flixquest = 'flix.quest';
 
+  /// The domain shares use. Its registrable domain is the shared pages.dev suffix, so it is matched
+  /// on the whole host, never through [_registrableDomain].
+  static const String _flixtended = 'flixtended.pages.dev';
+
   /// A whole URL sitting in shared text, which is how another app hands one over.
   static final RegExp _schemed = RegExp(r'https?://\S+', caseSensitive: false);
 
   /// The same link with the scheme left off, as it appears in text people typed themselves.
   static final RegExp _bare = RegExp(
-    r'\b(?:[\w-]+\.)*(?:imdb\.com|themoviedb\.org|flix\.quest)/\S*',
+    r'\b(?:[\w-]+\.)*(?:imdb\.com|themoviedb\.org|flix\.quest|flixtended\.pages\.dev)/\S*',
     caseSensitive: false,
   );
 
@@ -44,22 +50,33 @@ class MediaLink {
   /// A live channel is the live TV provider's own id for it, which is not a TMDB number.
   static final RegExp _flixquestChannel = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
 
-  /// Shareable addresses for catalog titles and episodes on FlixQuest's verified domain.
-  static Uri movieUrl(int movieId) => Uri.https(_flixquest, '/m/$movieId');
+  /// A shared list is its own id, which the app mints from the clock
+  /// (digits), but the shape stays open so a future id scheme still
+  /// parses.
+  static final RegExp _sharedListId = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
 
-  static Uri tvUrl(int seriesId) => Uri.https(_flixquest, '/t/$seriesId');
+  /// Shareable addresses for catalog titles and episodes on the site's verified domain.
+  static Uri movieUrl(int movieId) => Uri.https(_flixtended, '/m/$movieId');
+
+  static Uri tvUrl(int seriesId) => Uri.https(_flixtended, '/t/$seriesId');
 
   static Uri episodeUrl(int seriesId, int seasonNumber, int episodeNumber) =>
       Uri.https(
-        _flixquest,
+        _flixtended,
         '/t/$seriesId.$seasonNumber.$episodeNumber',
       );
 
   /// A shareable address for a DLHD channel. Returns null for ids that our link parser cannot open.
   static Uri? liveChannelUrl(String channelId) =>
       _flixquestChannel.hasMatch(channelId)
-          ? Uri.https(_flixquest, '/l/$channelId')
+          ? Uri.https(_flixtended, '/l/$channelId')
           : null;
+
+  /// A shareable address for a named list shared from the app. The id
+  /// is the list's own id (microseconds since epoch), so it fits the
+  /// same shape as a channel id and needs no encoding.
+  static Uri sharedListUrl(String listId) =>
+      Uri.https(_flixtended, '/list/$listId');
 
   /// Reads whatever link [value] carries.
   ///
@@ -69,13 +86,18 @@ class MediaLink {
   /// the caller's cue to say so rather than to open something arbitrary.
   static MediaLinkTarget? parse(String value) {
     for (final uri in _urls(value)) {
-      final host = _registrableDomain(uri);
-      final target = switch (host) {
-        _tmdb => _tmdbTarget(uri),
-        _imdb => _imdbTarget(uri),
-        _flixquest => _flixquestTarget(uri),
-        _ => null,
-      };
+      final host = uri.host.toLowerCase();
+      // flixtended.pages.dev shares flix.quest's path shape, but its
+      // registrable domain is the shared pages.dev suffix, so it is matched
+      // on the whole host (a www. in front is the same domain).
+      final target = host == _flixtended || host == 'www.$_flixtended'
+          ? _flixquestTarget(uri)
+          : switch (_registrableDomain(uri)) {
+              _tmdb => _tmdbTarget(uri),
+              _imdb => _imdbTarget(uri),
+              _flixquest => _flixquestTarget(uri),
+              _ => null,
+            };
       if (target != null) return target;
     }
     return null;
@@ -170,9 +192,9 @@ class MediaLink {
     return number == null || number < 0 ? null : number;
   }
 
-  /// flix.quest puts the kind first, as a single letter, and everything else in the one segment after
-  /// it. Anything that does not fit that exactly is not read at all, since these addresses are ours
-  /// and a malformed one is a broken link rather than a layout to guess at.
+  /// The shared domains put the kind first, as a single letter, and everything else in the one
+  /// segment after it. Anything that does not fit that exactly is not read at all, since these
+  /// addresses are ours and a malformed one is a broken link rather than a layout to guess at.
   static MediaLinkTarget? _flixquestTarget(Uri uri) {
     final segments =
         uri.pathSegments.where((segment) => segment.isNotEmpty).toList();
@@ -201,6 +223,10 @@ class MediaLink {
       case 'l':
         return _flixquestChannel.hasMatch(value)
             ? LiveChannelLink(channelId: value)
+            : null;
+      case 'list':
+        return _sharedListId.hasMatch(value)
+            ? SharedListLink(listId: value)
             : null;
     }
     return null;
@@ -344,4 +370,14 @@ class ImdbNameLink extends MediaLinkTarget {
   const ImdbNameLink({required this.imdbId});
 
   final String imdbId;
+}
+
+/// A named list shared from the app, by the list's own id. The screen
+/// it opens fetches the public snapshot; the link itself carries
+/// nothing else, so a private or deleted list simply has nothing to
+/// show.
+class SharedListLink extends MediaLinkTarget {
+  const SharedListLink({required this.listId});
+
+  final String listId;
 }

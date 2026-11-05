@@ -99,10 +99,19 @@ void main() {
         quality: '720p',
         maxVideoHeight: 720,
         headers: {'Referer': 'https://provider.test/'},
+        contentId: 7,
+        seasonNumber: 1,
+        episodeNumber: 2,
+        episodeId: 702,
       );
 
       expect(request.toMap(), containsPair('format', 'hls'));
       expect(request.toMap(), containsPair('maxVideoHeight', 720));
+      expect(request.toMap(), containsPair('episodeId', 702));
+      // The stored record round-trips the episode id, and copies keep it.
+      final item = OfflineDownload.fromMap(request.toMap());
+      expect(item.episodeId, 702);
+      expect(item.copyWith().episodeId, 702);
       expect(
         request.toMap()['headers'],
         {'Referer': 'https://provider.test/'},

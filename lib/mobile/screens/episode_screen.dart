@@ -218,17 +218,24 @@ class _EpisodeScreenState extends State<EpisodeScreen>
       _seasonNumber ?? 0,
       _number ?? 0,
     );
-    await Share.share(
-      tr(
-        'share_episode',
-        namedArgs: <String, String>{
-          'et': _episode.name ?? '',
-          'title': widget.series.title,
-          'rating': (_episode.voteAverage ?? 0).toStringAsFixed(1),
-          'url': '$url',
-        },
-      ),
-    );
+    // As on the details page: an episode with no rating shares as its
+    // title and link alone, never with a made-up 0.0.
+    final rating = _episode.voteAverage;
+    final episodeTitle = _episode.name ?? '';
+    final text = rating == null || rating <= 0
+        ? episodeTitle.isEmpty
+            ? '${widget.series.title}\n$url'
+            : '\u201c$episodeTitle\u201d from ${widget.series.title}\n$url'
+        : tr(
+            'share_episode',
+            namedArgs: <String, String>{
+              'et': episodeTitle,
+              'title': widget.series.title,
+              'rating': rating.toStringAsFixed(1),
+              'url': '$url',
+            },
+          );
+    await Share.share(text);
   }
 
   /// "S2:E4".

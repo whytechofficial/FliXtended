@@ -235,18 +235,24 @@ void main() {
 
     test('shared channel addresses open the same channel', () {
       final url = MediaLink.liveChannelUrl('sky-sports_1');
-      expect(url.toString(), 'https://flix.quest/l/sky-sports_1');
+      expect(url.toString(), 'https://flixtended.pages.dev/l/sky-sports_1');
       expect((MediaLink.parse(url.toString()) as LiveChannelLink).channelId,
           'sky-sports_1');
       expect(MediaLink.liveChannelUrl('bad/id'), isNull);
     });
 
     test('shareable catalog addresses use the verified app domain', () {
-      expect(MediaLink.movieUrl(550).toString(), 'https://flix.quest/m/550');
-      expect(MediaLink.tvUrl(1396).toString(), 'https://flix.quest/t/1396');
+      expect(
+        MediaLink.movieUrl(550).toString(),
+        'https://flixtended.pages.dev/m/550',
+      );
+      expect(
+        MediaLink.tvUrl(1396).toString(),
+        'https://flixtended.pages.dev/t/1396',
+      );
       expect(
         MediaLink.episodeUrl(1396, 4, 13).toString(),
-        'https://flix.quest/t/1396.4.13',
+        'https://flixtended.pages.dev/t/1396.4.13',
       );
 
       expect(
@@ -268,6 +274,62 @@ void main() {
     test('another site with the same paths is not ours', () {
       expect(MediaLink.parse('https://example.com/m/550'), isNull);
       expect(MediaLink.parse('https://flix.quest.evil.com/m/550'), isNull);
+    });
+  });
+
+  group('flixtended.pages.dev addresses', () {
+    test('a film, a series and an episode read in the same shape', () {
+      expect(
+        (MediaLink.parse('https://flixtended.pages.dev/m/550')
+                as TmdbMovieLink)
+            .id,
+        550,
+      );
+      expect(
+        (MediaLink.parse('https://flixtended.pages.dev/t/1396')
+                as TmdbTvLink)
+            .id,
+        1396,
+      );
+      final episode = MediaLink.parse(
+        'https://flixtended.pages.dev/t/1396.5.14',
+      ) as TmdbEpisodeLink;
+      expect(episode.seriesId, 1396);
+      expect(episode.seasonNumber, 5);
+      expect(episode.episodeNumber, 14);
+      expect(
+        (MediaLink.parse('https://flixtended.pages.dev/l/51')
+                as LiveChannelLink)
+            .channelId,
+        '51',
+      );
+    });
+
+    test('a bare address and a www. in front still read', () {
+      expect(
+        (MediaLink.parse('flixtended.pages.dev/m/550') as TmdbMovieLink).id,
+        550,
+      );
+      expect(
+        (MediaLink.parse('https://www.flixtended.pages.dev/t/1396')
+                as TmdbTvLink)
+            .id,
+        1396,
+      );
+    });
+
+    test('another pages.dev site is not ours', () {
+      expect(MediaLink.parse('https://example.pages.dev/m/550'), isNull);
+      expect(
+        MediaLink.parse('https://flixtended.pages.dev.evil.com/m/550'),
+        isNull,
+      );
+    });
+
+    test('a malformed address is not guessed at', () {
+      expect(MediaLink.parse('https://flixtended.pages.dev/'), isNull);
+      expect(MediaLink.parse('https://flixtended.pages.dev/m/abc'), isNull);
+      expect(MediaLink.parse('https://flixtended.pages.dev/x/550'), isNull);
     });
   });
 

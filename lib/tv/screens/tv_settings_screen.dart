@@ -19,6 +19,7 @@ import '../widgets/tv_dialog.dart';
 import '../widgets/tv_list_row.dart';
 import '../widgets/tv_page_header.dart';
 import '../widgets/tv_provider_order_dialog.dart';
+import 'tv_server_status_screen.dart';
 
 class TvSettingsScreen extends StatelessWidget {
   const TvSettingsScreen({
@@ -120,18 +121,6 @@ class TvSettingsScreen extends StatelessWidget {
           ),
         ];
         final sourceTiles = <Widget>[
-          _TvSettingTile(
-            key: const ValueKey<String>('tmdb-proxy'),
-            label: tr('tv_tmdb_proxy'),
-            value: settings.enableProxy
-                ? tr('tmdb_proxy_turn_off')
-                : tr('tmdb_proxy_auto_off'),
-            icon: PhosphorIcons.globeHemisphereWest(),
-            showsNext: false,
-            onActivate: () {
-              if (settings.enableProxy) settings.disableTmdbProxy();
-            },
-          ),
           _TvSettingTile(
             key: const ValueKey<String>('image-quality'),
             label: tr('image_quality'),
@@ -265,6 +254,17 @@ class TvSettingsScreen extends StatelessWidget {
               MaterialPageRoute<void>(
                 builder: (_) =>
                     const UpdateScreen(isForced: false, television: true),
+              ),
+            ),
+          ),
+          _TvSettingTile(
+            key: const ValueKey<String>('server-status'),
+            label: tr('tv_server_status'),
+            value: tr('tv_server_status_detail'),
+            icon: PhosphorIcons.pulse(),
+            onActivate: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const TvServerStatusScreen(),
               ),
             ),
           ),
@@ -495,7 +495,7 @@ class TvSettingsScreen extends StatelessWidget {
   }
 
   static String _colorThemeLabel(int index) => switch (index) {
-        -1 => 'FlixQuest',
+        -1 => 'FliXtended',
         AppColor.customIndex => tr('tv_custom'),
         1 => tr('tv_indigo'),
         2 => tr('tv_pink'),
@@ -517,7 +517,7 @@ class TvSettingsScreen extends StatelessWidget {
         18 => tr('tv_fuchsia'),
         19 => tr('tv_deep_emerald'),
         20 => tr('tv_coral'),
-        _ => 'FlixQuest',
+        _ => 'FliXtended',
       };
 
   static Future<void> _showThemeModePicker(
@@ -801,7 +801,10 @@ class _TvAppLanguagePicker extends StatelessWidget {
         for (final language in languages)
           TvListRow(
             key: ValueKey<String>('app-language-${language.languageCode}'),
-            label: language.languageName,
+            // TvListRow has no leading-widget slot, so the flag rides
+            // with the name, as in the mobile picker (LanguageFlag
+            // renders the same language.flag data there).
+            label: '${language.flag} ${language.languageName}',
             value: language.languageCode == selected ? tr('tv_selected') : null,
             showsNext: false,
             autofocus: language.languageCode == selected ||

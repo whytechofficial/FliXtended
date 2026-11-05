@@ -28,7 +28,7 @@ void main() {
     );
 
     expect(requestedUri.origin, 'https://api.theintrodb.org');
-    expect(requestedUri.path, '/v3/media');
+    expect(requestedUri.path, '/v4/media');
     expect(requestedUri.queryParameters, {
       'tmdb_id': '42',
       'duration_ms': '630000',

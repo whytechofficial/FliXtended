@@ -75,6 +75,9 @@ void main() {
             title: 'The Last Voyage',
             subtitle: '2026',
             currentProviderIndex: 0,
+            // The live ad slot fires a real network fetch; layout tests
+            // stand it down the way the season screens' adBuilder does.
+            adsBuilder: (_) => const SizedBox.shrink(),
             providers: [
               ProviderLoadState(
                 codeName: 'first',
@@ -114,6 +117,7 @@ void main() {
               title: 'A title long enough to need a second line on a phone',
               subtitle: 'S1:E3  ·  The Episode',
               currentProviderIndex: 3,
+              adsBuilder: (_) => const SizedBox.shrink(),
               providers: [
                 for (var index = 0; index < 14; index++)
                   ProviderLoadState(

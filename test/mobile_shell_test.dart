@@ -305,10 +305,19 @@ void main() {
       });
     });
 
-    testWidgets('below 700 the bottom bar stays', (tester) async {
-      await _pumpShell(tester, size: const Size(699, 900));
+    // The rail moved down to 600dp for tablets in the upstream 4.3.0
+    // merge, so the boundary lives at 600 now, not 700: below it the
+    // bottom bar stays, at it the rail takes over.
+    testWidgets('below 600 the bottom bar stays', (tester) async {
+      await _pumpShell(tester, size: const Size(599, 900));
       expect(find.byType(MobileNavBar), findsOneWidget);
       expect(find.byType(MobileNavRail), findsNothing);
+    });
+
+    testWidgets('at 600 on a tablet the rail appears', (tester) async {
+      await _pumpShell(tester, size: const Size(600, 900));
+      expect(find.byType(MobileNavRail), findsOneWidget);
+      expect(find.byType(MobileNavBar), findsNothing);
     });
   });
 }

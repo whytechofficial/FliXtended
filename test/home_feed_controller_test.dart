@@ -44,6 +44,8 @@ class _FakeSource implements HomeFeedSource {
     this.failServices = false,
     this.discovered = const {},
     this.genreList = const <Genres>[],
+    this.regional = const {},
+    this.regionalSeriesRows = const {},
   });
 
   final Map<MediaKind, List<MediaItem>> discovered;
@@ -56,6 +58,12 @@ class _FakeSource implements HomeFeedSource {
   final Set<(MediaKind, HomeList)> failing;
   final bool failServices;
   final List<Object> requests = <Object>[];
+
+  /// Regional movie rows, by [RegionalLanguage] code.
+  final Map<String, List<MediaItem>> regional;
+
+  /// Regional series rows, by [RegionalLanguage] code.
+  final Map<String, List<MediaItem>> regionalSeriesRows;
 
   @override
   Future<List<MediaItem>> list(MediaKind kind, HomeList list) async {
@@ -95,6 +103,18 @@ class _FakeSource implements HomeFeedSource {
   @override
   Future<List<MediaItem>> genre(MediaKind kind, int genreId) async =>
       const <MediaItem>[];
+
+  @override
+  Future<List<MediaItem>> regionalMovies(String languageCode) async {
+    requests.add(('regional', languageCode));
+    return regional[languageCode] ?? const <MediaItem>[];
+  }
+
+  @override
+  Future<List<MediaItem>> regionalSeries(String languageCode) async {
+    requests.add(('regionalSeries', languageCode));
+    return regionalSeriesRows[languageCode] ?? const <MediaItem>[];
+  }
 }
 
 void main() {
@@ -420,5 +440,95 @@ void main() {
       a.categories.map((category) => category.genre.genreID),
       isNot(b.categories.map((category) => category.genre.genreID)),
     );
+  });
+
+  group('regional', () {
+    test('movie rows load in order, ten at most', () async {
+      final source = _FakeSource(regional: {
+        'ml': _movies([for (var i = 1; i <= 12; i++) i]),
+        'ta': _movies([21, 22]),
+        'hi': _movies([31]),
+        'te': _movies([41, 42, 43]),
+      });
+      final feed =
+          await HomeFeedController(source).load(HomeFilter.movies);
+      expect(feed.regionalMovies.keys, ['ml', 'ta', 'hi', 'te']);
+      expect(feed.regionalMovies['ml'], hasLength(10));
+      expect(
+        feed.regionalMovies['ta']!.map((item) => item.id),
+        [21, 22],
+      );
+      expect(
+        source.requests.whereType<(String, String)>(),
+        contains(('regional', 'te')),
+      );
+    });
+
+    test('series visits get no regional movie rows', () async {
+      final source = _FakeSource(regional: {
+        'ml': _movies([1, 2]),
+      });
+      final feed =
+          await HomeFeedController(source).load(HomeFilter.series);
+      expect(
+        feed.regionalMovies.values.every((row) => row.isEmpty),
+        isTrue,
+      );
+      expect(
+        source.requests.whereType<(String, String)>(),
+        isNot(contains(('regional', 'ml'))),
+      );
+    });
+
+    test('series rows load in order, ten at most', () async {
+      final source = _FakeSource(regionalSeriesRows: {
+        'ml': _series([for (var i = 1; i <= 12; i++) i]),
+        'ta': _series([21, 22]),
+        'hi': _series([31]),
+        'te': _series([41, 42, 43]),
+      });
+      final feed =
+          await HomeFeedController(source).load(HomeFilter.series);
+      expect(feed.regionalSeries.keys, ['ml', 'ta', 'hi', 'te']);
+      expect(feed.regionalSeries['ml'], hasLength(10));
+      expect(
+        feed.regionalSeries['ta']!.map((item) => item.id),
+        [21, 22],
+      );
+      expect(
+        source.requests.whereType<(String, String)>(),
+        contains(('regionalSeries', 'te')),
+      );
+    });
+
+    test('all visits load both movie and series rows', () async {
+      final source = _FakeSource(
+        regional: {
+          'ml': _movies([1, 2]),
+        },
+        regionalSeriesRows: {
+          'ml': _series([3, 4]),
+        },
+      );
+      final feed = await HomeFeedController(source).load(HomeFilter.all);
+      expect(feed.regionalMovies['ml']!.map((item) => item.id), [1, 2]);
+      expect(feed.regionalSeries['ml']!.map((item) => item.id), [3, 4]);
+    });
+
+    test('movie visits get no regional series rows', () async {
+      final source = _FakeSource(regionalSeriesRows: {
+        'ml': _series([1, 2]),
+      });
+      final feed =
+          await HomeFeedController(source).load(HomeFilter.movies);
+      expect(
+        feed.regionalSeries.values.every((row) => row.isEmpty),
+        isTrue,
+      );
+      expect(
+        source.requests.whereType<(String, String)>(),
+        isNot(contains(('regionalSeries', 'ml'))),
+      );
+    });
   });
 }

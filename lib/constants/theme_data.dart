@@ -525,6 +525,15 @@ class Styles {
       required BuildContext context,
       required AppColor appColor,
       bool compactCorners = false,
+      // Accepted for call-site compatibility but intentionally NOT applied
+      // to colors: the design rule is that a seasonal theme contributes
+      // EFFECTS ONLY (bats, bulbs, fireworks, theme pictures, rendered by
+      // the occasional-effects overlay), while the chosen base theme always
+      // owns backgrounds and colors — Light stays light, Dark stays the
+      // brand dark, AMOLED stays true black, whatever season is active.
+      // That is what used to defeat AMOLED: the seasonal background and
+      // scheme replaced the lights-out black while a season was active.
+      // Ambient mode is separate from seasons and still tints, as before.
       OccasionalTheme? occasionalTheme,
       Color? ambientColor}) {
     var baseTheme = appThemeMode == 'dark'
@@ -534,19 +543,14 @@ class Styles {
             : appThemeMode == 'amoled'
                 ? lightsOutThemeData(isM3Enabled, darkDynamicColor, appColor)
                 : darkThemeData(isM3Enabled, darkDynamicColor, appColor);
-    final activeTheme =
-        occasionalTheme?.isActive == true ? occasionalTheme : null;
-    if (activeTheme != null) {
-      baseTheme = _applyOccasionalColors(baseTheme, activeTheme);
-    } else if (ambientColor != null) {
+    if (ambientColor != null) {
       baseTheme = _applyAmbientColor(baseTheme, ambientColor);
     }
     final themed = _applyFlixQuestUI(
       baseTheme,
       compactCorners: compactCorners,
       surfaceOverride:
-          activeTheme?.backgroundFor(baseTheme.colorScheme.brightness) ??
-              (ambientColor == null ? null : baseTheme.colorScheme.surface),
+          ambientColor == null ? null : baseTheme.colorScheme.surface,
     );
     return themed.copyWith(
       extensions: [
@@ -569,49 +573,6 @@ ThemeData _applyAmbientColor(ThemeData base, Color seedColor) {
     canvasColor: scheme.surface,
   );
 }
-
-ThemeData _applyOccasionalColors(ThemeData base, OccasionalTheme theme) {
-  final brightness = base.colorScheme.brightness;
-  final generated = ColorScheme.fromSeed(
-    seedColor: theme.primaryColor,
-    brightness: brightness,
-  );
-  final secondary = ColorScheme.fromSeed(
-    seedColor: theme.secondaryColor,
-    brightness: brightness,
-  );
-  final tertiary = ColorScheme.fromSeed(
-    seedColor: theme.tertiaryColor,
-    brightness: brightness,
-  );
-  final background = theme.backgroundFor(brightness);
-  final scheme = generated.copyWith(
-    primary: theme.primaryColor,
-    onPrimary: _readableOn(theme.primaryColor),
-    secondary: theme.secondaryColor,
-    onSecondary: _readableOn(theme.secondaryColor),
-    secondaryContainer: secondary.primaryContainer,
-    onSecondaryContainer: secondary.onPrimaryContainer,
-    tertiary: theme.tertiaryColor,
-    onTertiary: _readableOn(theme.tertiaryColor),
-    tertiaryContainer: tertiary.primaryContainer,
-    onTertiaryContainer: tertiary.onPrimaryContainer,
-    surface: background ?? generated.surface,
-    onSurface:
-        background == null ? generated.onSurface : _readableOn(background),
-  );
-  return base.copyWith(
-    colorScheme: scheme,
-    primaryColor: theme.primaryColor,
-    scaffoldBackgroundColor: background ?? base.scaffoldBackgroundColor,
-    canvasColor: background ?? base.canvasColor,
-  );
-}
-
-Color _readableOn(Color color) =>
-    ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-        ? Colors.white
-        : const Color(0xDE000000);
 
 ThemeData _applyFlixQuestUI(
   ThemeData base, {

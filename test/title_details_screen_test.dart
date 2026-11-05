@@ -51,6 +51,7 @@ MediaItem _related(int id) =>
 
 class _Source implements TitleDetailsSource {
   bool failSeries = false;
+  double? movieRating;
   final List<int> seasonLoads = <int>[];
 
   @override
@@ -59,6 +60,7 @@ class _Source implements TitleDetailsSource {
         status: 'Released',
         originalTitle: 'Heat',
         tagline: 'A Los Angeles crime saga',
+        voteAverage: movieRating,
       );
 
   @override
@@ -331,8 +333,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('play'), findsNothing);
     expect(find.text('download_action'), findsNothing);
-    // The rest of the page is still there.
-    expect(find.text('my_list'), findsOneWidget);
+    // The rest of the page is still there; the unsaved button offers
+    // to add the title to the Watchlist.
+    expect(find.text('add_to_watchlist'), findsOneWidget);
+  });
+
+  testWidgets('a rating-less card gains the details score in the facts row',
+      (tester) async {
+    // The card that opened the page carries no rating, as Continue
+    // Watching and Up Next rows do not; the loaded details do.
+    final unrated = MediaItem.fromMovie(Movie(
+      id: 1,
+      title: 'Heat',
+      releaseDate: '1995-12-15',
+      overview: 'A group of professional bank robbers start to feel the heat.',
+      backdropPath: '/heat.jpg',
+    ));
+    final source = _Source()..movieRating = 8.3;
+    await tester.pumpWidget(_app(unrated, source: source));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('1995 · \uFFFC8.3 · 2h 50m', findRichText: true),
+      findsOneWidget,
+    );
   });
 
   testWidgets('My List toggles movies and series from their detail actions',
@@ -348,7 +371,7 @@ void main() {
       await tester.pumpWidget(_app(item, bookmarks: bookmarks));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      await tester.tap(find.text('my_list'));
+      await tester.tap(find.text('add_to_watchlist'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -358,6 +381,8 @@ void main() {
             : bookmarks.isTVBookmarked(item.id),
         isTrue,
       );
+      // Once saved, the button reads as the Watchlist itself.
+      expect(find.text('my_list'), findsOneWidget);
       expect(tester.takeException(), isNull);
     }
   });

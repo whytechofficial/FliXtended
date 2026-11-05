@@ -12,15 +12,20 @@ import '../../catalog/continue_watching.dart';
 import '../../catalog/media_item.dart';
 import '../../design/app_palette.dart';
 import '../../design/app_tokens.dart';
-import '../../models/offline_download.dart';
 import '../../provider/bookmark_provider.dart';
+import '../../provider/named_lists_provider.dart';
 import '../../provider/offline_download_provider.dart';
 import '../../provider/recently_watched_provider.dart';
 import '../../provider/settings_provider.dart';
+import '../../services/tmdb_list_import.dart';
 import '../../screens/common/about.dart';
 import '../../screens/common/bookmark_screen.dart';
 import '../../screens/common/downloads_screen.dart';
 import '../../screens/common/server_status_screen.dart';
+import '../../screens/common/tv_sign_in_approval_screen.dart';
+import '../widgets/named_list_dialogs.dart';
+import 'named_list_detail_screen.dart';
+import 'named_lists_screen.dart';
 import '../../screens/common/settings.dart' as app_settings;
 import '../../screens/common/sync_screen.dart';
 import '../../screens/common/update_screen.dart';
@@ -28,6 +33,7 @@ import '../../screens/user/edit_profile.dart';
 import '../../screens/wellness/wellness_screen.dart';
 import '../../services/auth_navigation_service.dart';
 import '../../services/flixquest_auth_service.dart';
+import '../widgets/list_cards.dart';
 import '../widgets/media_rows.dart';
 import '../widgets/page_kit.dart';
 import '../widgets/pill_button.dart';
@@ -94,6 +100,7 @@ class _MyFlixQuestScreenState extends State<MyFlixQuestScreen> {
     final palette = AppPalette.of(context);
     final recent = context.watch<RecentProvider>();
     final bookmarks = context.watch<BookmarkProvider>();
+    final namedLists = context.watch<NamedListsProvider>();
     final downloads = context.watch<OfflineDownloadProvider>().downloads;
     final continueWatching = continueWatchingItems(
       movies: recent.movies,
@@ -153,6 +160,34 @@ class _MyFlixQuestScreenState extends State<MyFlixQuestScreen> {
             ],
             const SizedBox(height: AppSpace.xxl),
             SectionHeader(
+              title: tr('my_lists'),
+              onSeeAll: namedLists.lists.length >= 5
+                  ? () => _push(const NamedListsScreen())
+                  : null,
+            ),
+            if (namedLists.lists.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpace.gutter(context),
+                  vertical: AppSpace.md,
+                ),
+                child: Text(
+                  tr('no_lists_yet'),
+                  style: AppType.body.copyWith(color: palette.mutedText),
+                ),
+              ),
+            NamedListsCardRow(
+              lists: namedLists.lists.take(4).toList(),
+              onList: (list) =>
+                  _push(NamedListDetailScreen(listId: list.id)),
+              onPlus: () => showNamedListPlusSheet(
+                context,
+                onNewList: _createList,
+                onImport: _importList,
+              ),
+            ),
+            const SizedBox(height: AppSpace.xxl),
+            SectionHeader(
               title: tr('downloads'),
               onSeeAll: () => _push(const DownloadsScreen()),
             ),
@@ -168,11 +203,10 @@ class _MyFlixQuestScreenState extends State<MyFlixQuestScreen> {
                 ),
               )
             else
-              for (final download in downloads.take(3))
-                _DownloadSummaryRow(
-                  download: download,
-                  onTap: () => _push(const DownloadsScreen()),
-                ),
+              DownloadsCardRow(
+                downloads: downloads,
+                onDownload: () => _push(const DownloadsScreen()),
+              ),
             const SizedBox(height: AppSpace.xxl),
             Padding(
               padding:
@@ -197,6 +231,15 @@ class _MyFlixQuestScreenState extends State<MyFlixQuestScreen> {
               label: tr('check_server'),
               onTap: () => _push(const ServerStatusScreen()),
             ),
+            // Approving a TV needs a signed-in phone user; guests never
+            // see a row that could not work for them.
+            if (_isSignedIn)
+              ListRow(
+                icon: PhosphorIcons.qrCode(),
+                label: tr('tv_sign_in_approve_title'),
+                subtitle: tr('tv_sign_in_approve_subtitle'),
+                onTap: () => _push(const TvSignInApprovalScreen()),
+              ),
             ListRow(
               icon: PhosphorIcons.arrowCircleUp(),
               label: tr('check_for_update'),
@@ -233,6 +276,52 @@ class _MyFlixQuestScreenState extends State<MyFlixQuestScreen> {
     return user != null && !user.isAnonymous;
   }
 
+  Future<void> _createList() async {
+    final form = await showNamedListNameDialog(
+      context,
+      title: tr('new_list'),
+      confirmLabel: tr('create'),
+    );
+    if (form == null || !mounted) return;
+    final created = await context.read<NamedListsProvider>().createList(
+          form.name,
+          description: form.description,
+        );
+    if (created == null || !mounted) return;
+    _push(NamedListDetailScreen(listId: created.id));
+  }
+
+  Future<void> _importList() async {
+    final link = await showImportTmdbListDialog(context);
+    if (link == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final list = await importListFromLink(context, link);
+      if (!mounted) return;
+      _push(NamedListDetailScreen(listId: list.id));
+    } on TmdbListImportException catch (error) {
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              tr(switch (error.error) {
+                TmdbListImportError.invalidLink => 'import_invalid_link',
+                TmdbListImportError.fetchFailed => 'import_failed',
+                TmdbListImportError.emptyList => 'import_empty_list',
+              }),
+            ),
+          ),
+        );
+    } catch (_) {
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(tr('import_failed'))));
+    }
+  }
+
   Future<void> _shareApp() async {
     context.read<SettingsProvider>().analytics.trackShare(shareType: 'App');
     await Share.share(tr('share_text'));
@@ -262,8 +351,8 @@ class _MyFlixQuestScreenState extends State<MyFlixQuestScreen> {
     try {
       try {
         await FirebaseAuth.instance.currentUser?.delete().timeout(
-          const Duration(seconds: 10),
-        );
+              const Duration(seconds: 10),
+            );
       } catch (_) {
         // A guest session can still be cleared locally when offline.
       }
@@ -484,51 +573,4 @@ class _ProfileSnapshot {
   final String name;
   final String photoUrl;
   final Object profileId;
-}
-
-class _DownloadSummaryRow extends StatelessWidget {
-  const _DownloadSummaryRow({required this.download, required this.onTap});
-
-  final OfflineDownload download;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    final failed = download.state == OfflineDownloadState.failed;
-    // Always determinate: a failed or queued item must not look busy.
-    final progress = download.isComplete
-        ? 1.0
-        : (download.progress / 100).clamp(0.0, 1.0).toDouble();
-    return ListRow(
-      icon: PhosphorIcons.downloadSimple(),
-      label: download.title,
-      subtitle: tr('download_status_${download.state.name}'),
-      onTap: onTap,
-      trailing: SizedBox(
-        width: 76,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: <Widget>[
-            Text(
-              download.isComplete ? '100%' : '${download.progress.round()}%',
-              style: AppType.metadata.copyWith(
-                color: failed
-                    ? Theme.of(context).colorScheme.error
-                    : palette.mutedText,
-              ),
-            ),
-            const SizedBox(height: 5),
-            LinearProgressIndicator(
-              value: progress,
-              minHeight: 3,
-              borderRadius: BorderRadius.circular(AppRadii.chip),
-              backgroundColor: palette.idleFill,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

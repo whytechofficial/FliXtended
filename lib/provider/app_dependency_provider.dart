@@ -571,8 +571,14 @@ class AppDependencyProvider extends ChangeNotifier {
   }
 
   Future<void> getOccasionalTheme({bool preserveSelection = false}) async {
-    _occasionalThemeCatalog = OccasionalThemeCatalog.fromJsonString(
-      await _preferences.getOccasionalTheme(),
+    // No enabled cached catalog — first launch, or a remote catalog that
+    // was never published — means the built-in seasons, not no seasons.
+    // An explicit remote catalog arriving later still takes over through
+    // applyRemoteOccasionalTheme, including an explicit disable.
+    _occasionalThemeCatalog = OccasionalThemeCatalog.withBuiltInFallback(
+      OccasionalThemeCatalog.fromJsonString(
+        await _preferences.getOccasionalTheme(),
+      ),
     );
     _selectedOccasionalThemeId =
         (await _preferences.getOccasionalThemeSelection()).trim().toLowerCase();

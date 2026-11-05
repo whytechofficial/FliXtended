@@ -42,6 +42,7 @@ class PlaybackLoadingScreen extends StatelessWidget {
     this.subtitle,
     this.backdropPath,
     this.posterPath,
+    this.adsBuilder,
     super.key,
   });
 
@@ -51,6 +52,11 @@ class PlaybackLoadingScreen extends StatelessWidget {
   final String? posterPath;
   final List<ProviderLoadState> providers;
   final int currentProviderIndex;
+
+  /// Replaces the live ad slot; layout tests use it so the screen never
+  /// fires a real ads request while its arrangement is under test. The
+  /// season and episode screens take the same shape of override.
+  final WidgetBuilder? adsBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +78,7 @@ class PlaybackLoadingScreen extends StatelessWidget {
       providers: providers,
       currentIndex: currentProviderIndex,
     );
+    final ads = adsBuilder?.call(context) ?? const _LoadingAds();
 
     return Scaffold(
       backgroundColor: palette.page,
@@ -113,12 +120,14 @@ class PlaybackLoadingScreen extends StatelessWidget {
                               title: title,
                               subtitle: subtitle,
                               race: race,
+                              ads: ads,
                             )
                           : _PortraitLoadingLayout(
                               title: title,
                               subtitle: subtitle,
                               artworkClearance: artworkClearance,
                               race: race,
+                              ads: ads,
                             ),
                     ),
                   );
@@ -168,12 +177,14 @@ class _PortraitLoadingLayout extends StatelessWidget {
     required this.subtitle,
     required this.artworkClearance,
     required this.race,
+    required this.ads,
   });
 
   final String title;
   final String? subtitle;
   final double artworkClearance;
   final Widget race;
+  final Widget ads;
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +196,7 @@ class _PortraitLoadingLayout extends StatelessWidget {
         const SizedBox(height: AppSpace.xxl),
         race,
         const SizedBox(height: AppSpace.xxxl),
-        const Center(child: _LoadingAds()),
+        Center(child: ads),
       ],
     );
   }
@@ -196,11 +207,13 @@ class _WideLoadingLayout extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.race,
+    required this.ads,
   });
 
   final String title;
   final String? subtitle;
   final Widget race;
+  final Widget ads;
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +233,7 @@ class _WideLoadingLayout extends StatelessWidget {
                 race,
                 if (!adsBeside) ...<Widget>[
                   const SizedBox(height: AppSpace.xxl),
-                  const _LoadingAds(),
+                  ads,
                 ],
               ],
             ),
@@ -234,7 +247,7 @@ class _WideLoadingLayout extends StatelessWidget {
           children: <Widget>[
             Expanded(child: details),
             const SizedBox(width: 40),
-            const SizedBox(width: _adsWidth, child: _LoadingAds()),
+            SizedBox(width: _adsWidth, child: ads),
           ],
         );
       },

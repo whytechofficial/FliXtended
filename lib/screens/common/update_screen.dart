@@ -30,17 +30,25 @@ import '../../services/app_update_service.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen(
-      {super.key, required this.isForced, this.television = false});
+      {super.key,
+      required this.isForced,
+      this.television = false,
+      this.downloadManager});
 
   final bool isForced;
   final bool television;
+
+  /// The downloader the screen drives; tests inject their own so they can
+  /// seed and observe transfers. Production screens use a fresh one.
+  final UpdateDownloadManager? downloadManager;
 
   @override
   State<UpdateScreen> createState() => _UpdateScreenState();
 }
 
 class _UpdateScreenState extends State<UpdateScreen> {
-  final UpdateDownloadManager _downloadManager = UpdateDownloadManager();
+  late final UpdateDownloadManager _downloadManager =
+      widget.downloadManager ?? UpdateDownloadManager();
   PackageInfo? _packageInfo;
   String _savedDir = '';
   List<String> _deviceAbis = const [];

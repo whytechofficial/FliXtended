@@ -202,6 +202,9 @@ Future<Future<void> Function()> removeFromContinueWatching(
   };
 }
 
+// Undoing a removal must restore the row as it was, sticky provider
+// included — otherwise undo would silently drop the cross-device sticky
+// the row carried before it was removed.
 RecentMovie _restoredMovie(RecentMovie row) => RecentMovie(
       backdropPath: row.backdropPath,
       dateTime: row.dateTime,
@@ -211,6 +214,7 @@ RecentMovie _restoredMovie(RecentMovie row) => RecentMovie(
       releaseYear: row.releaseYear,
       remaining: row.remaining,
       title: row.title,
+      providerCode: row.providerCode,
     );
 
 RecentEpisode _restoredEpisode(RecentEpisode row) => RecentEpisode(
@@ -225,4 +229,5 @@ RecentEpisode _restoredEpisode(RecentEpisode row) => RecentEpisode(
       seriesName: row.seriesName,
       seriesId: row.seriesId,
       backdropPath: row.backdropPath,
+      providerCode: row.providerCode,
     );

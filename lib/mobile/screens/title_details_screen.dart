@@ -40,6 +40,7 @@ import '../../services/ambient_theme_service.dart';
 import '../../services/media_link.dart';
 import '../collections.dart';
 import '../episode_playback.dart';
+import '../widgets/named_list_dialogs.dart';
 import '../my_list.dart';
 import '../widgets/details_header.dart';
 import '../widgets/details_parts.dart';
@@ -116,6 +117,22 @@ class _TitleDetailsScreenState extends State<TitleDetailsScreen> {
   MediaItem get _item => widget.item;
   bool get _isMovie => _item.kind == MediaKind.movie;
 
+  /// The TMDB score from the loaded details, once they arrive. The card
+  /// that opened this page may carry no rating at all — Continue
+  /// Watching and Up Next rows do not — so the page must not trust the
+  /// card alone for the facts row or the share text.
+  double? _detailsRating;
+
+  /// The rating the page shows and shares: the loaded details' score
+  /// first, the opening card's second, nothing when neither has one.
+  double? get _effectiveRating {
+    final details = _detailsRating;
+    if (details != null && details > 0) return details;
+    final item = _item.rating;
+    if (item != null && item > 0) return item.toDouble();
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -162,6 +179,7 @@ class _TitleDetailsScreenState extends State<TitleDetailsScreen> {
     _videos = _source.videos(item);
     _images = _source.images(item);
     _links = _source.links(item);
+    _watchDetailsRating();
     // Each part shows its own failure; none of them is left unhandled.
     for (final Future<Object?>? future in <Future<Object?>?>[
       _movie,
@@ -178,6 +196,25 @@ class _TitleDetailsScreenState extends State<TitleDetailsScreen> {
   }
 
   void _retry() => setState(_load);
+
+  /// Picks the details' TMDB score up when it lands, so the facts row
+  /// and the share text gain a rating the opening card never had. A
+  /// failed details load simply leaves the card's rating standing.
+  void _watchDetailsRating() {
+    _movie?.then((details) {
+      if (mounted) _applyDetailsRating(details.voteAverage);
+    }, onError: (_) {});
+    _series?.then((details) {
+      if (mounted) _applyDetailsRating(details.voteAverage);
+    }, onError: (_) {});
+  }
+
+  void _applyDetailsRating(num? rating) {
+    if (rating == null) return;
+    final value = rating.toDouble();
+    if (value <= 0 || value == _detailsRating) return;
+    setState(() => _detailsRating = value);
+  }
 
   void _onScroll() {
     final collapsed = _scroll.hasClients &&
@@ -463,21 +500,30 @@ class _TitleDetailsScreenState extends State<TitleDetailsScreen> {
         );
   }
 
+  Future<void> _showLists() async {
+    await showAddToListSheet(context, _item);
+  }
+
   Future<void> _share() async {
     context.read<SettingsProvider>().analytics.trackShare(
         shareType: _isMovie ? 'Movie' : 'TV', mediaName: _item.title);
     final url =
         _isMovie ? MediaLink.movieUrl(_item.id) : MediaLink.tvUrl(_item.id);
-    await Share.share(
-      tr(
-        _isMovie ? 'share_movie' : 'share_tv',
-        namedArgs: <String, String>{
-          'title': _item.title,
-          'rating': (_item.rating ?? 0).toStringAsFixed(1),
-          'url': '$url',
-        },
-      ),
-    );
+    // A title with no rating shares without a Rated line, never with a
+    // made-up 0.0: the variant is the title and the link alone, kept
+    // out of the translation templates so no locale gains a new string.
+    final rating = _effectiveRating;
+    final text = rating == null
+        ? '${_item.title}\n$url'
+        : tr(
+            _isMovie ? 'share_movie' : 'share_tv',
+            namedArgs: <String, String>{
+              'title': _item.title,
+              'rating': rating.toStringAsFixed(1),
+              'url': '$url',
+            },
+          );
+    await Share.share(text);
   }
 
   Future<void> _loadMoreLikeThis() async {
@@ -734,10 +780,10 @@ class _TitleDetailsScreenState extends State<TitleDetailsScreen> {
     );
     // Year · ★ 8.3 · 2h 50m, the star drawn as an icon: Figtree has none.
     Widget line(List<String> after) {
-      final rating = _item.rating ?? 0;
+      final rating = _effectiveRating;
       final parts = <InlineSpan>[
         if (_item.year != null) TextSpan(text: _item.year),
-        if (rating > 0) ...<InlineSpan>[
+        if (rating != null) ...<InlineSpan>[
           WidgetSpan(
             alignment: PlaceholderAlignment.middle,
             child: Padding(
@@ -976,8 +1022,15 @@ class _TitleDetailsScreenState extends State<TitleDetailsScreen> {
                 icon: saved
                     ? PhosphorIcons.check(PhosphorIconsStyle.bold)
                     : PhosphorIcons.plus(),
-                label: tr('my_list'),
+                label: saved ? tr('my_list') : tr('add_to_watchlist'),
                 onPressed: _toggleMyList,
+              ),
+            ),
+            Expanded(
+              child: DetailsAction(
+                icon: PhosphorIcons.listDashes(),
+                label: tr('lists'),
+                onPressed: _showLists,
               ),
             ),
             if (trailer != null)

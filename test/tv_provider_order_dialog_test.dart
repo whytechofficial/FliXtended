@@ -75,8 +75,14 @@ void main() {
     final settings = SettingsProvider()
       ..setStreamProviderOrder([beta, VideoProvider.directVixSrc, alpha]);
     await _openOrder(tester, settings, () async => [alpha, beta]);
-    expect(_displayedOrder(tester),
-        ['Second source', 'VixSrc Direct', 'First source']);
+    expect(_displayedOrder(tester), [
+      'Second source',
+      'VixSrc Direct',
+      'First source',
+      'Hampi',
+      'Nalanda',
+      'Dholavira'
+    ]);
     expect(FocusManager.instance.primaryFocus?.debugLabel,
         'Provider order: Second source');
 
@@ -84,10 +90,22 @@ void main() {
     expect(find.text('Move earlier'), findsNothing);
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'Move later');
     await _select(tester);
-    expect(_displayedOrder(tester),
-        ['VixSrc Direct', 'Second source', 'First source']);
-    expect(settings.streamProviderOrder,
-        ['direct:vixsrc', 'scraper:beta', 'scraper:alpha']);
+    expect(_displayedOrder(tester), [
+      'VixSrc Direct',
+      'Second source',
+      'First source',
+      'Hampi',
+      'Nalanda',
+      'Dholavira'
+    ]);
+    expect(settings.streamProviderOrder, [
+      'direct:vixsrc',
+      'scraper:beta',
+      'scraper:alpha',
+      'direct:castle',
+      'direct:netmirror',
+      'direct:mxplayer'
+    ]);
     expect(
         sharedPrefsSingleton
             .getStringList(SettingsPreferences.STREAM_PROVIDER_ORDER),
@@ -102,8 +120,19 @@ void main() {
     await _select(tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
-    expect(settings.streamProviderOrder,
-        ['scraper:beta', 'direct:vixsrc', 'scraper:alpha']);
+    expect(settings.streamProviderOrder, [
+      'scraper:beta',
+      'direct:vixsrc',
+      'scraper:alpha',
+      'direct:castle',
+      'direct:netmirror',
+      'direct:mxplayer'
+    ]);
+    // Five downs from the first row land on the last row (Dholavira),
+    // whose move dialog has no 'Move later'.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await _select(tester);
@@ -115,13 +144,16 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'Open order');
     final hydrated = SettingsProvider();
     await hydrated.getStreamProviderOrder();
+    // The saved order includes the directs, but they are not in this
+    // input catalog, so hydration yields the available three in the
+    // saved relative order.
     expect(
         hydrated.orderStreamProviders([
           alpha,
           beta,
           VideoProvider.directVixSrc
         ]).map((provider) => provider.codeName),
-        settings.streamProviderOrder);
+        ['scraper:beta', 'direct:vixsrc', 'scraper:alpha']);
     expect(tester.takeException(), isNull);
   });
 
@@ -136,20 +168,31 @@ void main() {
       if (calls == 1) throw StateError('Offline');
       return [beta, alpha];
     });
-    expect(_displayedOrder(tester), ['VixSrc Direct']);
+    expect(_displayedOrder(tester),
+        ['VixSrc Direct', 'Hampi', 'Nalanda', 'Dholavira']);
     expect(
         find.text('Could not refresh sources. Your saved order is unchanged.'),
         findsOneWidget);
     await _select(tester);
     expect(find.text('Move earlier'), findsNothing);
     expect(settings.streamProviderOrder, saved);
+    // With more than one item, selecting opens the move dialog, so close
+    // it first; arrowUp from the first row then lands on the Retry pill.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pumpAndSettle();
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'Retry');
     await _select(tester);
     expect(calls, 2);
-    expect(_displayedOrder(tester),
-        ['First source', 'Second source', 'VixSrc Direct']);
+    expect(_displayedOrder(tester), [
+      'First source',
+      'Second source',
+      'VixSrc Direct',
+      'Hampi',
+      'Nalanda',
+      'Dholavira'
+    ]);
     expect(
         sharedPrefsSingleton
             .getStringList(SettingsPreferences.STREAM_PROVIDER_ORDER),
@@ -175,7 +218,7 @@ void main() {
     expect(bounds.bottom, lessThan(512));
     await _select(tester);
     expect(
-        find.text('Priority 16 of 17. Sources are tried from top to bottom.'),
+        find.text('Priority 16 of 20. Sources are tried from top to bottom.'),
         findsOneWidget);
     expect(tester.takeException(), isNull);
   });

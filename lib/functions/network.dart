@@ -173,6 +173,14 @@ Future<Credits> fetchCredits(
   return credits;
 }
 
+/// TMDB's answer as it came, for a reader that needs fields the models drop,
+/// such as the role a person played in each of their credits.
+Future<Map<String, dynamic>> fetchTmdbJson(
+    String api, bool isProxyEnabled, String proxyUrl) async {
+  final res = await TmdbConnectivity.instance.get(api, proxyUrl);
+  return jsonDecode(res.body) as Map<String, dynamic>;
+}
+
 Future<List<Person>> fetchPerson(
     String api, bool isProxyEnabled, String proxyUrl) async {
   PersonList credits;

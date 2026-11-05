@@ -1,9 +1,9 @@
 class AppLanguages {
   AppLanguages(
-      {required this.languageFlag,
+      {required this.flag,
       required this.languageName,
       required this.languageCode});
   String languageName;
-  String languageFlag;
+  String flag;
   String languageCode;
 }

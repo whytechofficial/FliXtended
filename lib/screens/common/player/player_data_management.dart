@@ -27,6 +27,11 @@ class PlayerDataManagement {
     required BetterPlayerController betterPlayerController,
     required int duration,
     required MovieStreamMetadata movieMetadata,
+    // The provider actually playing, so the synced row carries it to other
+    // devices (see the sticky seeder in recently_watched_sync_service).
+    // Null means unknown and seeds no sticky; it never clears a provider
+    // already on the row, because the cloud map omits a null provider.
+    String? providerCode,
   }) async {
     if (!context.mounted || duration <= 0) return;
     final video = betterPlayerController.videoPlayerController?.value;
@@ -48,11 +53,19 @@ class PlayerDataManagement {
         releaseYear: movieMetadata.releaseYear!,
         remaining: remaining,
         title: movieMetadata.movieName,
-        backdropPath: movieMetadata.backdropPath!);
+        backdropPath: movieMetadata.backdropPath!,
+        providerCode: providerCode);
 
     double percentage = (elapsed / duration) * 100;
     final isBookmarked =
         await recentlyWatchedMoviesController.contain(rMov.id!);
+
+    // A save without a known provider must not blank the one already on
+    // the row: keep the existing sticky rather than writing null over it.
+    rMov.providerCode ??= prv.movies
+        .where((movie) => movie.id == rMov.id)
+        .firstOrNull
+        ?.providerCode;
 
     // If completion is > 85%, remove from recents (if exists) and don't add
     if (percentage > 85) {
@@ -75,6 +88,8 @@ class PlayerDataManagement {
     required BetterPlayerController betterPlayerController,
     required int duration,
     required TVStreamMetadata tvMetadata,
+    // See [insertRecentMovieData]: the provider actually playing.
+    String? providerCode,
   }) async {
     if (!context.mounted || duration <= 0) return;
     final video = betterPlayerController.videoPlayerController?.value;
@@ -108,12 +123,19 @@ class PlayerDataManagement {
         episodeName: tvMetadata.episodeName!,
         episodeNum: tvMetadata.episodeNumber!,
         seasonNum: tvMetadata.seasonNumber!,
-        seriesId: tvMetadata.tvId!);
+        seriesId: tvMetadata.tvId!,
+        providerCode: providerCode);
 
     double percentage = (elapsed / duration) * 100;
     final next = percentage > 85 ? UpNext.after(tvMetadata) : null;
     final isBookmarked =
         await recentlyWatchedEpisodeController.contain(rEpisode.id!);
+
+    // See the movie path: never blank an existing sticky with null.
+    rEpisode.providerCode ??= prv.episodes
+        .where((episode) => episode.id == rEpisode.id)
+        .firstOrNull
+        ?.providerCode;
 
     // If completion is > 85%, remove from recents (if exists) and don't add
     if (percentage > 85) {
@@ -147,6 +169,7 @@ class PlayerDataManagement {
     required int playbackDurationInSeconds,
     MovieStreamMetadata? movieMetadata,
     TVStreamMetadata? tvMetadata,
+    String? providerCode,
   }) async {
     // Save current playback progress
     if (mediaType == MediaType.movie) {
@@ -155,6 +178,7 @@ class PlayerDataManagement {
         betterPlayerController: betterPlayerController,
         duration: duration,
         movieMetadata: movieMetadata!,
+        providerCode: providerCode,
       );
     } else {
       await insertRecentEpisodeData(
@@ -162,6 +186,7 @@ class PlayerDataManagement {
         betterPlayerController: betterPlayerController,
         duration: duration,
         tvMetadata: tvMetadata!,
+        providerCode: providerCode,
       );
     }
 

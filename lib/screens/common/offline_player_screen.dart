@@ -16,8 +16,10 @@ import '../../models/tv_stream_metadata.dart';
 import '../../models/wellness.dart';
 import '../../constants/app_constants.dart';
 import '../../provider/app_dependency_provider.dart';
+import '../../provider/recently_watched_provider.dart';
 import '../../provider/settings_provider.dart';
 import '../../provider/wellness_provider.dart';
+import '../../services/streaming_dnd_service.dart';
 import 'player/player_feedback_ui.dart';
 import 'player/player_strings.dart';
 import 'player/player_external_subtitles.dart';
@@ -42,6 +44,15 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
   final GlobalKey _playerKey = GlobalKey();
   var _initialized = false;
   late final SettingsProvider _settings;
+
+  /// Captured once, not read from context on save: saves also run from
+  /// dispose, where the context is going away. Null when the provider is
+  /// unavailable, in which case offline playback keeps its local position
+  /// only and the synced mirror is skipped, never failed.
+  RecentProvider? _recent;
+  late final AppDependencyProvider _appDependencies;
+  late final StreamingDndSession _streamingDnd;
+  int? _occasionalEffectsSuppressionId;
   late final WellnessPlaybackTracker _wellnessTracker;
   late final String _wellnessSessionId;
   bool _completed = false;
@@ -50,6 +61,13 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
   @override
   void initState() {
     super.initState();
+    // Mirror the online/live players: engage Do Not Disturb for the whole
+    // downloaded playback (when the setting is on) and release it on dispose.
+    // Offline playback has no TV form, so television is always false.
+    _streamingDnd = StreamingDndSession(
+      Provider.of<SettingsProvider>(context, listen: false),
+      television: false,
+    );
     final now = DateTime.now();
     _wellnessSessionId =
         '${now.microsecondsSinceEpoch}-offline-${widget.download.id}';
@@ -57,6 +75,13 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
       id: _wellnessSessionId,
       createdAt: now,
     );
+    _appDependencies =
+        Provider.of<AppDependencyProvider>(context, listen: false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _occasionalEffectsSuppressionId != null) return;
+      _occasionalEffectsSuppressionId =
+          _appDependencies.suppressOccasionalEffects();
+    });
   }
 
   @override
@@ -67,6 +92,11 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
     final accent = Theme.of(context).primaryColor;
     final settings = context.read<SettingsProvider>();
     _settings = settings;
+    try {
+      _recent = context.read<RecentProvider>();
+    } catch (_) {
+      _recent = null;
+    }
     final controls = BetterPlayerControlsConfiguration(
       gestureConfiguration: BetterPlayerGestureConfiguration(
         enableVolumeSwipe: true,
@@ -157,7 +187,25 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
     final offlineUrl = 'flixquest-offline://${widget.download.id}';
     // Resume where the viewer left off, if a position was saved for this
     // download. The player seeks once initialized; null starts at 0.
-    final resumeMs = settings.getOfflineResumePosition(widget.download.id);
+    // No local position? Fall back to the title's synced position, so a
+    // download watched on another device resumes here too. The local
+    // position always wins when it exists: it is the fresher record of
+    // what THIS download actually played, and the synced row carries no
+    // timestamp to compare it against.
+    final localMs = settings.getOfflineResumePosition(widget.download.id);
+    int? syncedMs;
+    if (localMs == null) {
+      try {
+        syncedMs = syncedResumeMsForDownload(
+          movies: _recent?.movies ?? const [],
+          episodes: _recent?.episodes ?? const [],
+          download: widget.download,
+        );
+      } catch (_) {
+        syncedMs = null;
+      }
+    }
+    final resumeMs = localMs ?? syncedMs;
     _controller.setupDataSource(
       BetterPlayerDataSource(
         BetterPlayerDataSourceType.network,
@@ -190,23 +238,129 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
   /// mirroring the streaming rule) clears the saved position instead.
   /// Nothing is touched before the player initializes, so a spurious
   /// early event can never wipe a saved position.
+  ///
+  /// The position is ALSO mirrored into the title's synced
+  /// recently-watched row (see `offline_resume.dart`), which is what makes
+  /// the position cross devices. A zero position only clears the local
+  /// store: no playback happened, so it must not tombstone a synced row
+  /// another device wrote.
   Future<void> _saveResumePosition() async {
     final value = _controller.videoPlayerController?.value;
     if (value == null || !value.initialized) return;
     final positionMs = value.position.inMilliseconds;
     final durationMs = value.duration?.inMilliseconds ?? 0;
-    if (positionMs <= 0 ||
-        shouldClearOfflineResume(
-          positionMs: positionMs,
-          durationMs: durationMs,
-        )) {
+    if (positionMs <= 0) {
       await _settings.clearOfflineResumePosition(widget.download.id);
+      return;
+    }
+    if (shouldClearOfflineResume(
+      positionMs: positionMs,
+      durationMs: durationMs,
+    )) {
+      await _settings.clearOfflineResumePosition(widget.download.id);
+      await _clearSyncedRow();
       return;
     }
     await _settings.setOfflineResumePosition(
       widget.download.id,
       positionMs,
     );
+    await _mirrorResumeToSyncedRow(
+      positionMs: positionMs,
+      durationMs: durationMs,
+    );
+  }
+
+  /// Mirrors the offline position into the title's synced row. Movies
+  /// create the row when streaming never did; episodes do too once the
+  /// download record carries an episode id (post-beta64 TV downloads —
+  /// see `mirroredEpisodeRow`). Older episode downloads still only
+  /// update an existing row. The row's sticky provider is preserved:
+  /// offline playback has no provider to record.
+  Future<void> _mirrorResumeToSyncedRow({
+    required int positionMs,
+    required int durationMs,
+  }) async {
+    final recent = _recent;
+    if (recent == null) return;
+    final elapsedSeconds = positionMs ~/ 1000;
+    if (elapsedSeconds <= 0) return;
+    final download = widget.download;
+    final durationSeconds = durationMs ~/ 1000;
+    if (download.mediaType == 'movie') {
+      final movieId = download.contentId;
+      if (movieId == null) return;
+      final existing =
+          existingMovieRow(movies: recent.movies, download: download);
+      final remainingSeconds = durationSeconds > 0
+          ? (durationSeconds - elapsedSeconds).clamp(0, durationSeconds)
+          : (existing?.remaining ?? 0);
+      final row = mirroredMovieRow(
+        existing: existing,
+        movieId: movieId,
+        title: download.title,
+        posterPath: tmdbPosterPathFromDownloadUrl(download.posterUrl),
+        elapsedSeconds: elapsedSeconds,
+        remainingSeconds: remainingSeconds,
+      );
+      if (existing != null && row.id != null) {
+        await recent.updateMovie(row, row.id!);
+      } else {
+        await recent.addMovie(row);
+      }
+      return;
+    }
+    final existing =
+        existingEpisodeRow(episodes: recent.episodes, download: download);
+    final remainingSeconds = durationSeconds > 0
+        ? (durationSeconds - elapsedSeconds).clamp(0, durationSeconds)
+        : (existing?.remaining ?? 0);
+    final row = mirroredEpisodeRow(
+      existing: existing,
+      elapsedSeconds: elapsedSeconds,
+      remainingSeconds: remainingSeconds,
+      episodeId: download.episodeId,
+      seriesId: download.contentId,
+      seasonNum: download.seasonNumber,
+      episodeNum: download.episodeNumber,
+      // The download record's title is the series name; the episode
+      // name itself is not stored cleanly, so a created row carries
+      // none until online playback overwrites it with full metadata.
+      seriesName: download.title,
+      posterPath: tmdbPosterPathFromDownloadUrl(download.posterUrl),
+    );
+    if (row == null ||
+        row.id == null ||
+        row.episodeNum == null ||
+        row.seasonNum == null) {
+      return;
+    }
+    if (existing != null) {
+      await recent.updateEpisode(row, row.id!, row.episodeNum!, row.seasonNum!);
+    } else {
+      await recent.addEpisode(row);
+    }
+  }
+
+  /// Drops the title's synced row, mirroring the streaming rule that a
+  /// finished title leaves Continue Watching. Tombstoning (not deleting)
+  /// is what carries the removal to the other devices.
+  Future<void> _clearSyncedRow() async {
+    final recent = _recent;
+    if (recent == null) return;
+    final download = widget.download;
+    if (download.mediaType == 'movie') {
+      final row = existingMovieRow(movies: recent.movies, download: download);
+      if (row?.id != null) await recent.deleteMovie(row!.id!);
+      return;
+    }
+    final row =
+        existingEpisodeRow(episodes: recent.episodes, download: download);
+    if (row?.id != null &&
+        row?.episodeNum != null &&
+        row?.seasonNum != null) {
+      await recent.deleteEpisode(row!.id!, row.episodeNum!, row.seasonNum!);
+    }
   }
 
   void _onPlayerEvent(BetterPlayerEvent event) {
@@ -226,6 +380,7 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
         _completed = true;
         _wellnessTracker.pause();
         unawaited(_settings.clearOfflineResumePosition(widget.download.id));
+        unawaited(_clearSyncedRow());
         unawaited(_persistWellnessSession(syncImmediately: true));
       default:
         break;
@@ -329,12 +484,22 @@ class _OfflinePlayerScreenState extends State<OfflinePlayerScreen> {
       unawaited(_persistWellnessSession(syncImmediately: true));
       _controller.dispose();
     }
+    final suppressionId = _occasionalEffectsSuppressionId;
+    if (suppressionId != null) {
+      _occasionalEffectsSuppressionId = null;
+      // Keep effects suppressed through the outgoing route frame. This also
+      // overlaps safely with a replacement player's newly acquired scope.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _appDependencies.releaseOccasionalEffectsSuppression(suppressionId);
+      });
+    }
     SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+    _streamingDnd.dispose();
     super.dispose();
   }
 

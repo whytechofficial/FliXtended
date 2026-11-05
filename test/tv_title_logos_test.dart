@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flixquest/constants/api_constants.dart';
 import 'package:flixquest/tv/controllers/tv_title_logos.dart';
 import 'package:flixquest/services/tmdb_connectivity.dart';
 import 'package:flixquest/tv/models/tv_media_item.dart';
@@ -189,7 +190,10 @@ void main() {
       expect(requested.host, 'proxy.example');
       expect(requested.toString(), contains('destination='));
       final destination = Uri.parse(requested.queryParameters['destination']!);
-      expect(destination.path, '/3/movie/3/images');
+      // The destination carries the app's TMDB base path (today the
+      // worker's /ab/3 prefix).
+      expect(destination.path,
+          '${Uri.parse(TMDB_API_BASE_URL).path}/movie/3/images');
       expect(
           destination.queryParameters['include_image_language'], 'en,en,null');
     });

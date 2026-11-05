@@ -28,7 +28,14 @@ class _FileLoader extends AssetLoader {
           as Map<String, dynamic>;
 }
 
-const _locales = [Locale('en'), Locale('ar'), Locale('es'), Locale('hi')];
+const _locales = [
+  Locale('en'),
+  Locale('ar'),
+  Locale('es'),
+  Locale('hi'),
+  Locale('it'),
+  Locale('fr')
+];
 
 Future<void> _pumpLocalized(WidgetTester tester, Widget child) async {
   tester.view.physicalSize = const Size(960, 540);
@@ -153,7 +160,7 @@ void main() {
         isNull);
     expect(FocusManager.instance.primaryFocus, same(languageFocus));
 
-    const codes = ['en', 'ar', 'es', 'hi'];
+    const codes = ['en', 'ar', 'es', 'hi', 'it', 'fr'];
     for (final target in ['es', 'ar', 'hi', 'en']) {
       final previous = settings.appLanguage;
       await press(LogicalKeyboardKey.select);

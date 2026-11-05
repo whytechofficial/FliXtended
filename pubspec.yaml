@@ -3,7 +3,7 @@ description: A Flutter movie app.
 
 publish_to: "none"
 
-version: 4.3.9+39
+version: 4.4.0+66
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -74,6 +74,7 @@ dependencies:
   startapp_sdk: ^1.0.1
   url_launcher: ^6.3.2
   wakelock_plus: ^1.4.0
+  webview_flutter: ^4.9.0
   xml: ^6.6.1
   flutter_native_splash: ^2.4.2
 
@@ -90,7 +91,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-    - assets/images/country_flags/
     - assets/images/profiles/
     - assets/translations/
     - assets/ca/

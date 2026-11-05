@@ -7,6 +7,9 @@ import '../provider/settings_provider.dart';
 import '../widgets/common_widgets.dart' show AppStreamingService;
 import 'catalog_controller.dart';
 import 'media_item.dart';
+import 'regional_language.dart';
+
+export 'regional_language.dart' show RegionalLanguage;
 
 /// What the phone's Home page shows: everything, or one kind.
 enum HomeFilter {
@@ -56,6 +59,14 @@ abstract class HomeFeedSource {
 
   Future<List<MediaItem>> service(MediaKind kind, int providerId);
   Future<List<Genres>> genres(MediaKind kind);
+
+  /// The most popular movies originally in [languageCode], for a
+  /// regional Top 10 row.
+  Future<List<MediaItem>> regionalMovies(String languageCode);
+
+  /// The most popular series originally in [languageCode], for a
+  /// regional Top 10 row.
+  Future<List<MediaItem>> regionalSeries(String languageCode);
 }
 
 /// TMDB through the app's usual fetchers and proxy settings.
@@ -159,6 +170,28 @@ class CatalogHomeFeedSource implements HomeFeedSource {
       );
 
   @override
+  Future<List<MediaItem>> regionalMovies(String languageCode) {
+    final language = settings.appLanguage;
+    return catalog.loadRow(
+      kind: MediaKind.movie,
+      url: Endpoints.discoverMoviesByLanguageUrl(language, languageCode),
+      settings: settings,
+      dependencies: dependencies,
+    );
+  }
+
+  @override
+  Future<List<MediaItem>> regionalSeries(String languageCode) {
+    final language = settings.appLanguage;
+    return catalog.loadRow(
+      kind: MediaKind.series,
+      url: Endpoints.discoverSeriesByLanguageUrl(language, languageCode),
+      settings: settings,
+      dependencies: dependencies,
+    );
+  }
+
+  @override
   Future<List<Genres>> genres(MediaKind kind) => catalog.loadGenres(
         kind: kind,
         settings: settings,
@@ -219,6 +252,8 @@ class HomeFeed {
     this.rows = const <MediaKind, KindRows>{},
     this.movieGenres = const <Genres>[],
     this.seriesGenres = const <Genres>[],
+    this.regionalMovies = const <String, List<MediaItem>>{},
+    this.regionalSeries = const <String, List<MediaItem>>{},
   });
 
   final HomeFilter filter;
@@ -235,6 +270,14 @@ class HomeFeed {
   final List<Genres> movieGenres;
   final List<Genres> seriesGenres;
 
+  /// The regional Top 10 rows, by [RegionalLanguage] code. Movies only;
+  /// empty under a series-only filter.
+  final Map<String, List<MediaItem>> regionalMovies;
+
+  /// The regional Top 10 rows, by [RegionalLanguage] code. Series only;
+  /// empty under a movie-only filter.
+  final Map<String, List<MediaItem>> regionalSeries;
+
   KindRows of(MediaKind kind) => rows[kind] ?? KindRows.empty;
 
   /// The spotlight's first, else the best-known title there is.
@@ -242,7 +285,10 @@ class HomeFeed {
       spotlight.firstOrNull ??
       filter.kinds.map((kind) => of(kind).first).nonNulls.firstOrNull;
 
-  bool get isEmpty => rows.values.every((kind) => kind.isEmpty);
+  bool get isEmpty =>
+      rows.values.every((kind) => kind.isEmpty) &&
+      regionalMovies.values.every((row) => row.isEmpty) &&
+      regionalSeries.values.every((row) => row.isEmpty);
 }
 
 /// How a category row lays out its titles, varied so a run of them doesn't
@@ -356,6 +402,21 @@ class HomeFeedController {
         ),
     ]);
     final loadedGenres = await genres;
+    // The regional Top 10s: one discover per language and kind, each
+    // failing on its own like every other row. A visit only loads the
+    // kinds its filter shows.
+    final loadedRegional = await Future.wait(<Future<List<MediaItem>>>[
+      for (final language in RegionalLanguage.values)
+        filter.shows(MediaKind.movie)
+            ? _orEmpty(source.regionalMovies(language.code))
+            : Future.value(const <MediaItem>[]),
+    ]);
+    final loadedRegionalSeries = await Future.wait(<Future<List<MediaItem>>>[
+      for (final language in RegionalLanguage.values)
+        filter.shows(MediaKind.series)
+            ? _orEmpty(source.regionalSeries(language.code))
+            : Future.value(const <MediaItem>[]),
+    ]);
     return HomeFeed(
       filter: filter,
       spotlight: interleave(<List<MediaItem>>[
@@ -367,6 +428,16 @@ class HomeFeedController {
       },
       movieGenres: loadedGenres[0],
       seriesGenres: loadedGenres[1],
+      regionalMovies: <String, List<MediaItem>>{
+        for (var i = 0; i < RegionalLanguage.values.length; i++)
+          RegionalLanguage.values[i].code:
+              loadedRegional[i].take(10).toList(growable: false),
+      },
+      regionalSeries: <String, List<MediaItem>>{
+        for (var i = 0; i < RegionalLanguage.values.length; i++)
+          RegionalLanguage.values[i].code:
+              loadedRegionalSeries[i].take(10).toList(growable: false),
+      },
     );
   }
 

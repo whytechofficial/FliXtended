@@ -14,6 +14,14 @@ import 'package:http/http.dart' as http;
 /// It reuses the package's [DownloadTask], [DownloadRequest] and
 /// [DownloadStatus] types so the existing update-screen UI works unchanged.
 class UpdateDownloadManager {
+  UpdateDownloadManager({http.Client Function()? clientFactory})
+      : _clientFactory = clientFactory;
+
+  /// Supplies the HTTP client for downloads; tests pass one that never
+  /// answers, so a download stays in flight while its state transitions
+  /// are exercised instead of racing a real network fetch.
+  final http.Client Function()? _clientFactory;
+
   final Map<String, DownloadTask> _tasks = {};
   final Map<String, _ActiveDownload> _active = {};
 
@@ -73,7 +81,6 @@ class UpdateDownloadManager {
 
   void _startDownload(DownloadTask task) {
     final url = task.request.url;
-    final savePath = task.request.path;
     task.status.value = DownloadStatus.downloading;
     final active = _ActiveDownload();
     _active[url] = active;
@@ -85,7 +92,7 @@ class UpdateDownloadManager {
   Future<void> _runDownload(DownloadTask task, _ActiveDownload active) async {
     final url = task.request.url;
     final savePath = task.request.path;
-    final client = http.Client();
+    final client = _clientFactory?.call() ?? http.Client();
     try {
       // Follow redirects manually (up to 5), keeping the final URL.
       var current = url;

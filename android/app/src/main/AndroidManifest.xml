@@ -29,7 +29,7 @@
       </queries>
     <application
         android:name=".FlixQuestApplication"
-        android:label="FliXtended"
+        android:label="${appLabel}"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner"
         android:requestLegacyExternalStorage="true"
@@ -118,6 +118,25 @@
                 <data android:pathPrefix="/m/" />
                 <data android:pathPrefix="/t/" />
                 <data android:pathPrefix="/l/" />
+            </intent-filter>
+
+            <!-- Addresses on flixtended.pages.dev, the domain shares now use. Kept in a filter of
+                 its own for the same reason as above: verification needs every host in a filter to
+                 pass, and this host's statement lives at
+                 https://flixtended.pages.dev/.well-known/assetlinks.json. Only the bare domain is
+                 claimed; www redirects there, and a redirect fails the check. Shares use
+                 /list/<id>, so /list/ is claimed here alongside the /m/, /t/ and /l/ paths
+                 (pathPrefix "/l/" does not match "/list/"). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="flixtended.pages.dev" />
+                <data android:pathPrefix="/m/" />
+                <data android:pathPrefix="/t/" />
+                <data android:pathPrefix="/l/" />
+                <data android:pathPrefix="/list/" />
             </intent-filter>
 
             <!-- Addresses on TMDB. Deliberately unverified: claiming a domain means publishing a

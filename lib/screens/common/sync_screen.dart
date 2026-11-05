@@ -14,6 +14,7 @@ import '../../models/tv.dart';
 import '../../provider/settings_provider.dart';
 import '../../services/bookmark_sync_service.dart';
 import '../../services/globle_method.dart';
+import '../../services/named_lists_sync_service.dart';
 import '../../services/recently_watched_sync_service.dart';
 import '../../catalog/media_item.dart';
 import '../../design/app_palette.dart';
@@ -150,9 +151,10 @@ class _SyncScreenState extends State<SyncScreen>
     final results = await Future.wait(<Future<bool>>[
       BookmarkSyncService.instance.syncNow(force: true),
       RecentlyWatchedSyncService.instance.syncNow(force: true),
+      NamedListsSyncService.instance.syncNow(force: true),
     ]);
     // This screen reports on bookmarks, so only their outcome drives the
-    // message; a failed recents merge is retried by the next sync.
+    // message; a failed recents or lists merge is retried by the next sync.
     final success = results.first;
     if (mounted) {
       context.read<SettingsProvider>().analytics.trackCloudSync(

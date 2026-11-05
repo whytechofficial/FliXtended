@@ -220,18 +220,21 @@ class SettingsPreferences {
   /// Last manually-chosen provider per TV series (keyed by TMDB TV id), so
   /// the next episode starts on the same provider instead of restarting from
   /// the top of the provider order.
-  static const _LAST_TV_PROVIDER_PREFIX = 'last_tv_provider_';
+  /// Shared with the recently-watched sync seeder, which writes these same
+  /// keys for rows pulled from another device. Keep the values stable: they
+  /// are the on-disk key format the loaders read.
+  static const lastTvProviderPrefix = 'last_tv_provider_';
 
   Future<void> setLastTvProvider(int tvId, String providerCode) async {
     await sharedPrefsSingleton.setString(
-      '$_LAST_TV_PROVIDER_PREFIX$tvId',
+      '$lastTvProviderPrefix$tvId',
       providerCode,
     );
   }
 
   String? getLastTvProvider(int tvId) {
     final code = sharedPrefsSingleton.getString(
-      '$_LAST_TV_PROVIDER_PREFIX$tvId',
+      '$lastTvProviderPrefix$tvId',
     );
     return code == null || code.trim().isEmpty ? null : code;
   }
@@ -239,18 +242,19 @@ class SettingsPreferences {
   /// Last manually-chosen provider per movie (keyed by TMDB movie id), so
   /// reopening the movie starts on the same provider instead of restarting
   /// from the top of the provider order. Mirrors the TV-series sticky.
-  static const _LAST_MOVIE_PROVIDER_PREFIX = 'last_movie_provider_';
+  /// See [lastTvProviderPrefix]: the sync seeder writes these keys too.
+  static const lastMovieProviderPrefix = 'last_movie_provider_';
 
   Future<void> setLastMovieProvider(int movieId, String providerCode) async {
     await sharedPrefsSingleton.setString(
-      '$_LAST_MOVIE_PROVIDER_PREFIX$movieId',
+      '$lastMovieProviderPrefix$movieId',
       providerCode,
     );
   }
 
   String? getLastMovieProvider(int movieId) {
     final code = sharedPrefsSingleton.getString(
-      '$_LAST_MOVIE_PROVIDER_PREFIX$movieId',
+      '$lastMovieProviderPrefix$movieId',
     );
     return code == null || code.trim().isEmpty ? null : code;
   }
@@ -306,9 +310,26 @@ class SettingsPreferences {
         return oldCode == 'vixsrc' ? 'direct:vixsrc' : 'scraper:$oldCode';
       }),
     );
+    // A migrated list is a base order, not a choice: it deliberately
+    // leaves STREAM_PROVIDER_ORDER_CUSTOM untouched, so category
+    // ordering still applies until the user reorders in the dialog.
     await setStreamProviderOrder(migrated);
     return migrated;
   }
+
+  /// Whether the user explicitly arranged providers in the "Modify
+  /// providers order" dialog. Only that dialog sets this flag: a list
+  /// saved by the legacy migration above, or the fresh-install default,
+  /// is a base order, not a choice, so it still gets category
+  /// adjustment in the loaders. A stored list alone never opts out.
+  static const STREAM_PROVIDER_ORDER_CUSTOM = 'stream_provider_order_custom';
+
+  Future<void> setStreamProviderOrderCustom(bool value) async {
+    await sharedPrefsSingleton.setBool(STREAM_PROVIDER_ORDER_CUSTOM, value);
+  }
+
+  bool hasCustomStreamProviderOrder() =>
+      sharedPrefsSingleton.getBool(STREAM_PROVIDER_ORDER_CUSTOM) ?? false;
 
   List<String> _uniqueNonEmpty(Iterable<String> values) {
     final unique = <String>{};

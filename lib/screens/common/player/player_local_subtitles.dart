@@ -237,8 +237,24 @@ class PlayerLocalSubtitles {
     );
   }
 
-  Future<void> _pickFiles(
-      StateSetter setBottomSheetState, BuildContext context) async {
+  /// Picks subtitle files and applies them at once, skipping the manage
+  /// sheet. TV has no sheet to manage from, so its upload goes straight
+  /// to the picker.
+  Future<void> pickAndApply({
+    required BuildContext context,
+    required BetterPlayerController betterPlayerController,
+  }) async {
+    final added = await _pickFiles(null, context);
+    if (added > 0 && context.mounted) {
+      _applySelectedSubtitles(context, betterPlayerController);
+    }
+  }
+
+  /// Returns how many subtitle files were picked, or 0 when nothing was
+  /// picked or picking failed. Without a sheet to refresh, the files are
+  /// added directly instead of through [setBottomSheetState].
+  Future<int> _pickFiles(
+      StateSetter? setBottomSheetState, BuildContext context) async {
     try {
       final result = await _pickSubtitleFiles();
 
@@ -250,7 +266,7 @@ class PlayerLocalSubtitles {
             SnackBar(content: Text(tr('supported_formats_srt_vtt'))),
           );
         }
-        setBottomSheetState(() {
+        void addFiles() {
           for (final file in subtitles) {
             if (file.path != null) {
               final filePath = file.path!;
@@ -268,8 +284,16 @@ class PlayerLocalSubtitles {
               }
             }
           }
-        });
+        }
+
+        if (setBottomSheetState != null) {
+          setBottomSheetState(addFiles);
+        } else {
+          addFiles();
+        }
+        return subtitles.length;
       }
+      return 0;
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -279,6 +303,7 @@ class PlayerLocalSubtitles {
           ),
         );
       }
+      return 0;
     }
   }
 

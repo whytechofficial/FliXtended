@@ -15,6 +15,13 @@ bool _asBool(Object? value) {
   return (_asInt(value) ?? 0) == 1;
 }
 
+/// A provider code is sticky state, not display data: blank means "unknown",
+/// never a provider, so blanks normalize to null at every parse site.
+String? _asProviderCode(Object? value) {
+  final code = value is String ? value.trim() : null;
+  return code == null || code.isEmpty ? null : code;
+}
+
 class RecentMovie {
   RecentMovie({
     required this.backdropPath,
@@ -28,6 +35,7 @@ class RecentMovie {
     int? updatedAtUtc,
     this.deletedAtUtc,
     this.synced = false,
+    this.providerCode,
   }) : updatedAtUtc = updatedAtUtc ?? _nowUtcMillis();
 
   int? id;
@@ -38,6 +46,14 @@ class RecentMovie {
   String? dateTime;
   String? posterPath;
   String? backdropPath;
+
+  /// The provider the title was actually played on (e.g. Karamara), carried
+  /// through the synced record so a fresh device resumes on the same
+  /// provider instead of re-racing from the top of the order. Null means
+  /// unknown — an old record, or a row written before any provider was
+  /// recorded — and seeds no sticky. It is NOT a display field and never
+  /// decides which row wins a merge; [updatedAtUtc] still does that.
+  String? providerCode;
 
   /// Version stamp for cloud merges: the newest write for an id wins.
   int updatedAtUtc;
@@ -61,6 +77,7 @@ class RecentMovie {
     map['date_watched'] = dateTime;
     map['poster_path'] = posterPath;
     map['backdrop_path'] = backdropPath;
+    map['provider_code'] = providerCode;
     map['updated_at_utc'] = updatedAtUtc;
     map['deleted_at_utc'] = deletedAtUtc;
     map['synced'] = synced ? 1 : 0;
@@ -79,10 +96,15 @@ class RecentMovie {
     dateTime = map['date_watched'];
     posterPath = map['poster_path'];
     backdropPath = map['backdrop_path'];
+    providerCode = _asProviderCode(map['provider_code']);
   }
 
   /// Firestore payload. Deleted rows keep their metadata so a tombstone still
   /// renders nothing but can be reconciled against a stale device.
+  /// A null provider is OMITTED, not sent as null: under merge:true an
+  /// explicit null would clobber a provider another device already recorded,
+  /// while omitting it leaves that known provider in place. Null here means
+  /// "unknown", never "no provider".
   Map<String, dynamic> toCloudMap() => <String, dynamic>{
         'id': id,
         'title': title,
@@ -92,6 +114,8 @@ class RecentMovie {
         'dateWatched': dateTime,
         'posterPath': posterPath,
         'backdropPath': backdropPath,
+        if (_asProviderCode(providerCode) != null)
+          'providerCode': _asProviderCode(providerCode),
         'updatedAtUtc': updatedAtUtc,
         'deletedAtUtc': deletedAtUtc,
       };
@@ -106,6 +130,7 @@ class RecentMovie {
         dateTime: map['dateWatched'] as String?,
         posterPath: map['posterPath'] as String?,
         backdropPath: map['backdropPath'] as String?,
+        providerCode: _asProviderCode(map['providerCode']),
         updatedAtUtc: _asInt(map['updatedAtUtc']) ?? 0,
         deletedAtUtc: _asInt(map['deletedAtUtc']),
       );
@@ -127,6 +152,7 @@ class RecentEpisode {
     int? updatedAtUtc,
     this.deletedAtUtc,
     this.synced = false,
+    this.providerCode,
   }) : updatedAtUtc = updatedAtUtc ?? _nowUtcMillis();
 
   int? id;
@@ -140,6 +166,12 @@ class RecentEpisode {
   int? remaining;
   int? seriesId;
   String? backdropPath;
+
+  /// Same sticky-provider field as [RecentMovie.providerCode], except the
+  /// sticky it seeds is keyed by [seriesId], not by this row's episode [id]:
+  /// the TV loader's sticky is per series, so the next episode starts where
+  /// the last one played.
+  String? providerCode;
 
   /// Version stamp for cloud merges: the newest write for an id wins.
   int updatedAtUtc;
@@ -165,6 +197,7 @@ class RecentEpisode {
     map['remaining'] = remaining;
     map['date_added'] = dateTime;
     map['series_id'] = seriesId;
+    map['provider_code'] = providerCode;
     map['updated_at_utc'] = updatedAtUtc;
     map['deleted_at_utc'] = deletedAtUtc;
     map['synced'] = synced ? 1 : 0;
@@ -186,8 +219,10 @@ class RecentEpisode {
     remaining = map['remaining'];
     dateTime = map['date_added'];
     seriesId = map['series_id'];
+    providerCode = _asProviderCode(map['provider_code']);
   }
 
+  /// See [RecentMovie.toCloudMap] for why a null provider is omitted.
   Map<String, dynamic> toCloudMap() => <String, dynamic>{
         'id': id,
         'seriesId': seriesId,
@@ -200,6 +235,8 @@ class RecentEpisode {
         'elapsed': elapsed,
         'remaining': remaining,
         'dateAdded': dateTime,
+        if (_asProviderCode(providerCode) != null)
+          'providerCode': _asProviderCode(providerCode),
         'updatedAtUtc': updatedAtUtc,
         'deletedAtUtc': deletedAtUtc,
       };
@@ -217,6 +254,7 @@ class RecentEpisode {
         elapsed: _asInt(map['elapsed']),
         remaining: _asInt(map['remaining']),
         dateTime: map['dateAdded'] as String?,
+        providerCode: _asProviderCode(map['providerCode']),
         updatedAtUtc: _asInt(map['updatedAtUtc']) ?? 0,
         deletedAtUtc: _asInt(map['deletedAtUtc']),
       );

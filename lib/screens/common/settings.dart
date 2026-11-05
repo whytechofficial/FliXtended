@@ -83,8 +83,7 @@ class _SettingsState extends State<Settings> {
             ),
           ),
           child: DecoratedBox(
-            decoration:
-                BoxDecoration(color: color, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             child: Center(
               child: iconOverride ??
                   (selected
@@ -124,7 +123,7 @@ class _SettingsState extends State<Settings> {
 
     for (final language in langs) {
       if (language.languageCode.contains(settingsValues.appLanguage)) {
-        languageFlag = language.languageFlag;
+        languageFlag = language.flag;
         languageName = language.languageName;
         break;
       }
@@ -233,15 +232,6 @@ class _SettingsState extends State<Settings> {
                       });
                     },
                   ),
-                SwitchRow(
-                  subtitle: tr('tmdb_proxy_automatic'),
-                  value: settingsValues.enableProxy,
-                  icon: PhosphorIcons.globe(),
-                  label: tr('use_proxy'),
-                  onChanged: settingsValues.enableProxy
-                      ? (_) => settingsValues.disableTmdbProxy()
-                      : null,
-                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -293,8 +283,7 @@ class _SettingsState extends State<Settings> {
                       ],
                       Text(
                         languageName ?? settingsValues.appLanguage,
-                        style:
-                            AppType.body.copyWith(color: palette.mutedText),
+                        style: AppType.body.copyWith(color: palette.mutedText),
                       ),
                     ],
                   ),
@@ -351,8 +340,8 @@ class _SettingsState extends State<Settings> {
                   width: double.infinity,
                   height: 68,
                   child: ListView(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     scrollDirection: Axis.horizontal,
                     children: [
                       ...appColors

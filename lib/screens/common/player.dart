@@ -40,6 +40,8 @@ import '../../ui_components/app_ui_components.dart';
 import '../../services/stream_intro_service.dart';
 import '../../services/introdb_service.dart';
 import '../../services/offline_download_service.dart';
+import '../../services/playback_preference_store.dart';
+import '../../services/playback_prefs_sync_service.dart';
 import '../../services/playback_wake_lock.dart';
 import '../../services/stream_size_estimator.dart';
 import '../movie/movie_video_loader.dart';
@@ -115,6 +117,67 @@ class PlayerOne extends StatefulWidget {
 
   @override
   State<PlayerOne> createState() => _PlayerOneState();
+}
+
+/// Builds the download request for the currently playing title.
+///
+/// Extracted verbatim from [_PlayerOneState._downloadFromCurrentProvider]
+/// so the episode-id wiring is unit-testable: the player surface itself
+/// (resolution/audio sheets, BetterPlayer) is not. The only addition over
+/// the inline construction is `episodeId` for episodes — the TMDB episode
+/// id from [TVStreamMetadata] — which is what lets an offline-first
+/// episode key a synced resume row (see `mirroredEpisodeRow`). Movies
+/// carry no episode id. A null episode id (metadata without one) falls
+/// back to no synced row, exactly like a pre-beta64 download.
+@visibleForTesting
+OfflineDownloadRequest buildPlayerDownloadRequest({
+  required String url,
+  required String format,
+  required String quality,
+  required bool isMovie,
+  required MovieStreamMetadata? movie,
+  required TVStreamMetadata? episode,
+  required int season,
+  required int episodeNumber,
+  required String? posterPath,
+  required int? maxVideoHeight,
+  required Map<String, String> headers,
+  required OfflineAudioTrack? audioTrack,
+  required String? subtitleTrackUrl,
+  required String? subtitleTrackName,
+  required Map<String, String> subtitleTrackHeaders,
+  required String? providerName,
+}) {
+  return OfflineDownloadRequest(
+    id: isMovie
+        ? 'movie_${movie!.movieId}'
+        : 'tv_${episode!.tvId}_s${season}_e$episodeNumber',
+    url: url,
+    format: format,
+    title: isMovie
+        ? movie?.movieName ?? 'Movie'
+        : episode?.seriesName ?? 'TV episode',
+    subtitle: isMovie
+        ? 'From $providerName'
+        : 'S${season.toString().padLeft(2, '0')} • '
+            'E${episodeNumber.toString().padLeft(2, '0')} '
+            '${episode?.episodeName ?? ''} • $providerName',
+    mediaType: isMovie ? 'movie' : 'episode',
+    quality: quality,
+    posterUrl: posterPath == null
+        ? null
+        : '${TMDB_BASE_IMAGE_URL}w500$posterPath',
+    maxVideoHeight: maxVideoHeight,
+    headers: headers,
+    audioTrack: audioTrack,
+    contentId: isMovie ? movie?.movieId : episode?.tvId,
+    seasonNumber: isMovie ? null : season,
+    episodeNumber: isMovie ? null : episodeNumber,
+    episodeId: isMovie ? null : episode?.episodeId,
+    subtitleTrackUrl: subtitleTrackUrl,
+    subtitleTrackName: subtitleTrackName,
+    subtitleTrackHeaders: subtitleTrackHeaders,
+  );
 }
 
 class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
@@ -249,6 +312,28 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
   DateTime? _lastAnalyticsErrorAt;
   late final AppDependencyProvider _appDependencies;
   int? _occasionalEffectsSuppressionId;
+
+  /// The viewer's per-title audio/quality picks, remembered across sessions.
+  final PlaybackPreferenceStore _playbackPrefs = PlaybackPreferenceStore();
+
+  /// The quality height the player itself last applied (global default or a
+  /// restored pick), so the changedTrack listener can tell a manual pick —
+  /// the one worth remembering — apart from its own applies.
+  int? _lastAppliedQualityHeight;
+
+  /// Cross-device audio-language sync (language only; quality stays
+  /// local). Constructing it touches no Firebase: the first real cloud
+  /// call resolves it, and every call degrades to local-only on failure.
+  final PlaybackPrefsSyncService _playbackPrefsSync =
+      PlaybackPrefsSyncService.instance;
+
+  /// True only while [_applySavedPlaybackPreferences] is applying a
+  /// restored pick via setAudioTrack. The changedAudioTrack event fires
+  /// synchronously inside that call, so the handler can tell a restore
+  /// apart from a genuine pick: a restore must neither re-stamp the
+  /// pick with "now" (which would let it beat a newer pick from
+  /// another device) nor push it back to the cloud.
+  bool _restoringSavedAudio = false;
   bool _isContentMenuOpen = false;
 
   @override
@@ -427,6 +512,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         enableSubtitles: true,
         showSubtitlesButton: !widget.useTvControls,
         onSubtitlesTap: widget.useTvControls ? null : _showSubtitleSwitcher,
+        onAudioTap: widget.useTvControls ? null : _showAudioSwitcher,
         qualitiesIcon: PhosphorIcons.highDefinition(),
         showQualitiesButton: !widget.useTvControls,
         enableDownloadButton: !widget.useTvControls,
@@ -462,10 +548,11 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
                   PhosphorIcons.fileArrowUp(),
                   tr('upload_subtitles'),
                   () {
-                    _localSubtitles.showLocalSubtitlesUpload(
-                      context: context,
-                      colors: widget.colors,
-                      betterPlayerController: _betterPlayerController,
+                    unawaited(
+                      _localSubtitles.pickAndApply(
+                        context: context,
+                        betterPlayerController: _betterPlayerController,
+                      ),
                     );
                   },
                 ),
@@ -621,7 +708,22 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         );
       }
       if (!mounted) return;
+      // The initial source is established: remember the provider that
+      // actually started playing, so Continue Watching resumes here
+      // instead of re-racing from the top of the provider order. The
+      // race winner counts exactly like a manual pick, and a later
+      // manual switch overwrites it. This is playback only by
+      // construction — downloads return before the player is ever
+      // built, and offline playback does not use this player — so no
+      // download can set the sticky.
+      unawaited(settings.recordPlayedProvider(
+        isTv: widget.mediaType == MediaType.tvShow,
+        movieId: widget.movieMetadata?.movieId,
+        tvId: widget.tvMetadata?.tvId,
+        providerCode: _currentProviderCode,
+      ));
       _applyPreferredAdaptiveQuality();
+      unawaited(_applySavedPlaybackPreferences());
       duration = _betterPlayerController
               .videoPlayerController?.value.duration?.inSeconds ??
           0;
@@ -819,6 +921,39 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         final quality = height == null ? 'automatic' : '${height}p';
         settings.analytics.trackQualityChanged(quality: quality);
         _trackPlaybackEvent('quality_changed', value: quality);
+        // A manual quality pick is remembered for this title. An own apply
+        // (global default, restored pick) already recorded its height in
+        // _lastAppliedQualityHeight before calling setTrack, so it reads
+        // back as its own and never overwrites the remembered pick. The
+        // automatic track (height 0) clears the pick instead.
+        if (height is int) {
+          if (height == 0) {
+            if (_lastAppliedQualityHeight != null) {
+              _lastAppliedQualityHeight = null;
+              unawaited(_saveQualityPreference(null));
+            }
+          } else if (height != _lastAppliedQualityHeight) {
+            _lastAppliedQualityHeight = height;
+            unawaited(_saveQualityPreference(height));
+          }
+        }
+        break;
+      case BetterPlayerEventType.changedAudioTrack:
+        // The player's own controls (the TV audio menu included) switch
+        // tracks by calling setAudioTrack directly, with no app callback:
+        // this event is the only hook that sees a TV pick. Saving here
+        // is what makes a TV pick remembered per title, exactly like the
+        // mobile sheet's explicit save. A restore is skipped outright
+        // (the local store already holds that pick, and re-stamping it
+        // would let it beat a newer pick from another device); a
+        // mobile-sheet pick saves twice with the same value, harmless;
+        // the stream default never calls setAudioTrack, so it can never
+        // overwrite a saved pick.
+        if (_restoringSavedAudio) break;
+        final audioTrack = _betterPlayerController.betterPlayerAsmsAudioTrack;
+        if (audioTrack != null) {
+          unawaited(_saveAudioPreference(audioTrack));
+        }
         break;
       case BetterPlayerEventType.changedSubtitles:
         final source = _betterPlayerController.betterPlayerSubtitlesSource;
@@ -1543,6 +1678,10 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
 
     final exact = tracks.where((track) => track.height == preferredHeight);
     if (exact.isNotEmpty) {
+      // Recorded before the call: the changedTrack event fires inside
+      // setTrack, and the listener must see this as an own apply, not a
+      // manual pick worth remembering.
+      _lastAppliedQualityHeight = exact.first.height;
       _betterPlayerController.setTrack(exact.first);
       return;
     }
@@ -1551,17 +1690,113 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       (track) => track.height! <= preferredHeight,
     );
     if (atOrBelow.isNotEmpty) {
-      _betterPlayerController.setTrack(
-        atOrBelow.reduce(
-          (best, track) => track.height! > best.height! ? track : best,
-        ),
+      final best = atOrBelow.reduce(
+        (best, track) => track.height! > best.height! ? track : best,
       );
+      _lastAppliedQualityHeight = best.height;
+      _betterPlayerController.setTrack(best);
       return;
     }
-    _betterPlayerController.setTrack(
-      tracks.reduce(
-        (best, track) => track.height! < best.height! ? track : best,
-      ),
+    final lowest = tracks.reduce(
+      (best, track) => track.height! < best.height! ? track : best,
+    );
+    _lastAppliedQualityHeight = lowest.height;
+    _betterPlayerController.setTrack(lowest);
+  }
+
+  /// Restores the audio language and quality the viewer last picked for this
+  /// title, when the current stream still offers them. Runs after the global
+  /// preferred quality so a per-title pick wins over the global default.
+  /// A missing match simply keeps the stream default — a stale choice can
+  /// never break playback.
+  Future<void> _applySavedPlaybackPreferences() async {
+    final movieId = widget.movieMetadata?.movieId;
+    final seriesId = widget.tvMetadata?.tvId;
+    if (movieId == null && seriesId == null) return;
+    // Cross-device first: a newer cloud audio pick lands in the local
+    // store before anything restores from it, so the restore below
+    // plays the newest pick from any device. The merge never throws
+    // and never touches quality, so a sync failure simply restores
+    // the local pick exactly as before.
+    await _playbackPrefsSync.syncAudioOnStart(
+      movieId: movieId,
+      seriesId: seriesId,
+    );
+    if (!mounted) return;
+    final pref =
+        await _playbackPrefs.load(movieId: movieId, seriesId: seriesId);
+    if (pref == null || !mounted) return;
+    final controller = _betterPlayerController;
+    if (pref.audioLanguage != null || pref.audioLabel != null) {
+      final tracks = controller.betterPlayerAsmsAudioTracks ??
+          const <BetterPlayerAsmsAudioTrack>[];
+      BetterPlayerAsmsAudioTrack? match;
+      if (pref.audioLanguage != null) {
+        match = tracks
+            .where(
+              (track) =>
+                  track.language?.toLowerCase() ==
+                  pref.audioLanguage!.toLowerCase(),
+            )
+            .firstOrNull;
+      }
+      match ??= tracks
+          .where(
+            (track) =>
+                track.label != null && track.label == pref.audioLabel,
+          )
+          .firstOrNull;
+      if (match != null && controller.betterPlayerAsmsAudioTrack != match) {
+        // The event this fires is synchronous, so the handler runs
+        // while the flag is up and knows this is a restore, not a pick.
+        _restoringSavedAudio = true;
+        try {
+          controller.setAudioTrack(match);
+        } finally {
+          _restoringSavedAudio = false;
+        }
+      }
+    }
+    final height = pref.qualityHeight;
+    if (height != null) {
+      final tracks = controller.betterPlayerAsmsTracks
+          .where((track) => track.height == height)
+          .toList();
+      if (tracks.isNotEmpty) {
+        _lastAppliedQualityHeight = height;
+        controller.setTrack(tracks.first);
+      }
+    }
+  }
+
+  /// A genuine audio pick: saved locally with one stamp, then pushed
+  /// to the cloud with that same stamp so the two copies order
+  /// identically. The cloud push never throws (signed out, rules not
+  /// yet published, offline all degrade to local-only), so a pick is
+  /// never lost because sync failed.
+  Future<void> _saveAudioPreference(BetterPlayerAsmsAudioTrack track) async {
+    final stampedAt = DateTime.now().toUtc();
+    await _playbackPrefs.saveAudio(
+      movieId: widget.movieMetadata?.movieId,
+      seriesId: widget.tvMetadata?.tvId,
+      language: track.language,
+      label: track.label,
+      updatedAtUtc: stampedAt,
+    );
+    await _playbackPrefsSync.pushPick(
+      movieId: widget.movieMetadata?.movieId,
+      seriesId: widget.tvMetadata?.tvId,
+      language: track.language,
+      label: track.label,
+      updatedAtUtc: stampedAt,
+    );
+  }
+
+  Future<void> _saveQualityPreference(int? height) {
+    return _playbackPrefs.saveQuality(
+      movieId: widget.movieMetadata?.movieId,
+      seriesId: widget.tvMetadata?.tvId,
+      height: height,
     );
   }
 
@@ -1611,6 +1846,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       betterPlayerController: _betterPlayerController,
       duration: duration,
       movieMetadata: widget.movieMetadata!,
+      providerCode: _currentProviderCode,
     );
   }
 
@@ -1622,6 +1858,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
       betterPlayerController: _betterPlayerController,
       duration: duration,
       tvMetadata: widget.tvMetadata!,
+      providerCode: _currentProviderCode,
     );
   }
 
@@ -1874,6 +2111,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         playbackDurationInSeconds: playbackDurationInSeconds,
         movieMetadata: widget.movieMetadata,
         tvMetadata: widget.tvMetadata,
+        providerCode: _currentProviderCode,
       ),
       operation: 'playback progress on content switch',
     );
@@ -2761,6 +2999,7 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         initialPosition: position,
       );
       _applyPreferredAdaptiveQuality();
+      unawaited(_applySavedPlaybackPreferences());
       if (!wasPlaying) await _betterPlayerController.pause();
       unawaited(_loadIntroDbTimings());
 
@@ -3591,34 +3830,23 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
         return;
       }
       await context.read<OfflineDownloadProvider>().enqueue(
-            OfflineDownloadRequest(
-              id: isMovie
-                  ? 'movie_${movie!.movieId}'
-                  : 'tv_${episode!.tvId}_s${season}_e$episodeNumber',
+            buildPlayerDownloadRequest(
               url: url,
               format: format,
-              title: isMovie
-                  ? movie?.movieName ?? 'Movie'
-                  : episode?.seriesName ?? 'TV episode',
-              subtitle: isMovie
-                  ? 'From $providerName'
-                  : 'S${season.toString().padLeft(2, '0')} • '
-                      'E${episodeNumber.toString().padLeft(2, '0')} '
-                      '${episode?.episodeName ?? ''} • $providerName',
-              mediaType: isMovie ? 'movie' : 'episode',
               quality: resolution,
-              posterUrl: posterPath == null
-                  ? null
-                  : '${TMDB_BASE_IMAGE_URL}w500$posterPath',
+              isMovie: isMovie,
+              movie: movie,
+              episode: episode,
+              season: season,
+              episodeNumber: episodeNumber,
+              posterPath: posterPath,
               maxVideoHeight: _downloadResolutionHeight(resolution),
               headers: downloadHeaders,
               audioTrack: audioSelection.track,
-              contentId: isMovie ? movie?.movieId : episode?.tvId,
-              seasonNumber: isMovie ? null : season,
-              episodeNumber: isMovie ? null : episodeNumber,
               subtitleTrackUrl: subtitleTrack?.urls!.first,
               subtitleTrackName: subtitleTrack?.name,
               subtitleTrackHeaders: subtitleTrack?.headers ?? const {},
+              providerName: providerName,
             ),
           );
       settings.analytics.trackDownload(
@@ -3745,6 +3973,23 @@ class _PlayerOneState extends State<PlayerOne> with WidgetsBindingObserver {
           }),
         );
       },
+    );
+  }
+
+  /// Audio on its own button, split out of the combined panel: the viewer
+  /// reaches soundtracks directly instead of through the subtitles control.
+  void _showAudioSwitcher() {
+    showPlayerSheet<void>(
+      context: context,
+      builder: (sheetContext) => _AudioSwitcherSheet(
+        controller: _betterPlayerController,
+        onClose: () => Navigator.pop(sheetContext),
+        onAudioSelected: (track) {
+          _betterPlayerController.setAudioTrack(track);
+          unawaited(_saveAudioPreference(track));
+          Navigator.pop(sheetContext);
+        },
+      ),
     );
   }
 
@@ -4276,23 +4521,58 @@ class _SubtitleSwitcherSheetState extends State<_SubtitleSwitcherSheet> {
     );
   }
 
-  List<Widget> _audioRows() {
-    final tracks = widget.controller.betterPlayerAsmsAudioTracks ??
-        const <BetterPlayerAsmsAudioTrack>[];
-    final selected = widget.controller.betterPlayerAsmsAudioTrack;
-    return [
-      for (final (index, track) in tracks.indexed)
-        BetterPlayerSelectionTile(
-          title: _audioTrackTitle(track, index),
-          subtitle: _audioTrackSubtitle(track),
-          selected: selected == track || (selected == null && track.isDefault),
-          onTap: () {
-            widget.controller.setAudioTrack(track);
-            widget.onClose();
-          },
-        ),
+  @override
+  Widget build(BuildContext context) {
+    // Subtitles only now: soundtracks moved to their own button and panel,
+    // so this sheet no longer carries the audio column.
+    final subtitles = [
+      for (final option in widget.options) _subtitleRow(option)
     ];
+    return DraggableScrollableSheet(
+      initialChildSize: .82,
+      minChildSize: .5,
+      maxChildSize: .95,
+      expand: false,
+      snap: true,
+      builder: (context, scrollController) => PlayerSheetScaffold(
+        title: tr('player_subtitles'),
+        subtitle: tr('choose_subtitle_language'),
+        actions: [
+          PlayerSheetAction(
+            icon: PhosphorIcons.x(),
+            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            onPressed: widget.onClose,
+          ),
+        ],
+        footer: _SubtitleTools(
+          onTiming: widget.onTiming,
+          onSearchOnline: widget.onSearchOnline,
+          onUpload: widget.onUpload,
+        ),
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+          children: subtitles,
+        ),
+      ),
+    );
   }
+}
+
+/// Audio only: the soundtrack list, split out of the combined panel so the
+/// viewer reaches it from its own button instead of through subtitles.
+/// Rows and language names are the same as the old combined panel's audio
+/// column, and picking a track also remembers it for this title.
+class _AudioSwitcherSheet extends StatelessWidget {
+  const _AudioSwitcherSheet({
+    required this.controller,
+    required this.onClose,
+    required this.onAudioSelected,
+  });
+
+  final BetterPlayerController controller;
+  final VoidCallback onClose;
+  final ValueChanged<BetterPlayerAsmsAudioTrack> onAudioSelected;
 
   /// The audio track's own label when it has one, its language in full
   /// otherwise ("en" and "eng" both become "English").
@@ -4309,25 +4589,11 @@ class _SubtitleSwitcherSheetState extends State<_SubtitleSwitcherSheet> {
     return language.isEmpty ? null : language;
   }
 
-  Widget _heading(String text) => Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 10, 8),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: BetterPlayerPanelColors.of(context).foreground,
-            fontFamily: 'FigtreeBold',
-            fontSize: 16,
-          ),
-        ),
-      );
-
   @override
   Widget build(BuildContext context) {
-    final audio = _audioRows();
-    final withAudio = audio.length > 1;
-    final subtitles = [
-      for (final option in widget.options) _subtitleRow(option)
-    ];
+    final tracks = controller.betterPlayerAsmsAudioTracks ??
+        const <BetterPlayerAsmsAudioTrack>[];
+    final selected = controller.betterPlayerAsmsAudioTrack;
     return DraggableScrollableSheet(
       initialChildSize: .82,
       minChildSize: .5,
@@ -4335,59 +4601,27 @@ class _SubtitleSwitcherSheetState extends State<_SubtitleSwitcherSheet> {
       expand: false,
       snap: true,
       builder: (context, scrollController) => PlayerSheetScaffold(
-        title:
-            withAudio ? tr('player_audio_subtitles') : tr('player_subtitles'),
-        subtitle: tr('choose_subtitle_language'),
+        title: tr('player_audio'),
         actions: [
           PlayerSheetAction(
             icon: PhosphorIcons.x(),
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-            onPressed: widget.onClose,
+            onPressed: onClose,
           ),
         ],
-        footer: _SubtitleTools(
-          onTiming: widget.onTiming,
-          onSearchOnline: widget.onSearchOnline,
-          onUpload: widget.onUpload,
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            if (withAudio && constraints.maxWidth >= 560) {
-              Widget column(String title, List<Widget> rows,
-                      {ScrollController? controller}) =>
-                  Expanded(
-                    child: ListView(
-                      controller: controller,
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 24),
-                      children: [_heading(title), ...rows],
-                    ),
-                  );
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  column(tr('player_audio'), audio),
-                  column(
-                    tr('player_subtitles'),
-                    subtitles,
-                    controller: scrollController,
-                  ),
-                ],
-              );
-            }
-            return ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
-              children: [
-                if (withAudio) ...[
-                  _heading(tr('player_audio')),
-                  ...audio,
-                  const SizedBox(height: 16),
-                  _heading(tr('player_subtitles')),
-                ],
-                ...subtitles,
-              ],
-            );
-          },
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+          children: [
+            for (final (index, track) in tracks.indexed)
+              BetterPlayerSelectionTile(
+                title: _audioTrackTitle(track, index),
+                subtitle: _audioTrackSubtitle(track),
+                selected:
+                    selected == track || (selected == null && track.isDefault),
+                onTap: () => onAudioSelected(track),
+              ),
+          ],
         ),
       ),
     );

@@ -283,6 +283,7 @@ class StreamDownloadStore private constructor(context: Context) {
             "contentId" to metadata.optInt("contentId").takeIf { it > 0 },
             "seasonNumber" to metadata.optInt("seasonNumber").takeIf { it >= 0 },
             "episodeNumber" to metadata.optInt("episodeNumber").takeIf { it >= 0 },
+            "episodeId" to metadata.optInt("episodeId").takeIf { it > 0 },
             "offlineSubtitlePath" to metadata.optString("offlineSubtitlePath").ifBlank { null },
             "offlineSubtitleName" to metadata.optString("offlineSubtitleName").ifBlank { null },
         )
@@ -305,6 +306,7 @@ class StreamDownloadStore private constructor(context: Context) {
         put("contentId", (arguments["contentId"] as? Number)?.toInt() ?: 0)
         put("seasonNumber", (arguments["seasonNumber"] as? Number)?.toInt() ?: -1)
         put("episodeNumber", (arguments["episodeNumber"] as? Number)?.toInt() ?: -1)
+        put("episodeId", (arguments["episodeId"] as? Number)?.toInt() ?: 0)
         val headers = JSONObject()
         (arguments["headers"] as? Map<*, *>)?.forEach { (key, value) ->
             if (key is String && value is String) headers.put(key, value)

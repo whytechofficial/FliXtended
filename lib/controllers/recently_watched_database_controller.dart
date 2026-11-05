@@ -10,6 +10,11 @@ const String _updatedAtCol = 'updated_at_utc';
 const String _deletedAtCol = 'deleted_at_utc';
 const String _syncedCol = 'synced';
 
+/// Cross-device sticky provider (see RecentlyWatched models). Existing rows
+/// simply have NULL here, which means "unknown" — no sticky — exactly as
+/// before this column existed.
+const String _providerCodeCol = 'provider_code';
+
 /// Adds the sync bookkeeping columns to a pre-sync table and seeds
 /// [_updatedAtCol] from the row's existing local timestamp so a first merge has
 /// a usable version stamp. Unparsable dates fall back to 0, which loses to any
@@ -56,7 +61,7 @@ class RecentlyWatchedMoviesController {
     String path = '${directory.path}recent_movies.db';
     var recentMoviesDatabase = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDb,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -64,6 +69,11 @@ class RecentlyWatchedMoviesController {
             db,
             table: tableName,
             dateColumn: dateTimeCol,
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            'ALTER TABLE $tableName ADD COLUMN $_providerCodeCol TEXT',
           );
         }
       },
@@ -78,7 +88,7 @@ class RecentlyWatchedMoviesController {
 
   void _createDb(Database db, int newVersion) async {
     await db.execute(
-        'CREATE TABLE $tableName($colId INTEGER PRIMARY KEY, $colTitle TEXT, $posterPathCol TEXT, $backdropPathCol TEXT, $colReleaseYear INTEGER, $elapsedCol NUMERIC, $remainingCol NUMERIC, $dateTimeCol TEXT, $_updatedAtCol INTEGER, $_deletedAtCol INTEGER, $_syncedCol INTEGER NOT NULL DEFAULT 0)');
+        'CREATE TABLE $tableName($colId INTEGER PRIMARY KEY, $colTitle TEXT, $posterPathCol TEXT, $backdropPathCol TEXT, $colReleaseYear INTEGER, $elapsedCol NUMERIC, $remainingCol NUMERIC, $dateTimeCol TEXT, $_providerCodeCol TEXT, $_updatedAtCol INTEGER, $_deletedAtCol INTEGER, $_syncedCol INTEGER NOT NULL DEFAULT 0)');
   }
 
   Future<List<Map<String, dynamic>>> getMovieMapList() async {
@@ -249,7 +259,7 @@ class RecentlyWatchedEpisodeController {
     String path = '${directory.path}recent_episodes_v2.db';
     var episodesDatabase = await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDb,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -264,6 +274,11 @@ class RecentlyWatchedEpisodeController {
             dateColumn: colDateAdded,
           );
         }
+        if (oldVersion < 4) {
+          await db.execute(
+            'ALTER TABLE $tableName ADD COLUMN $_providerCodeCol TEXT',
+          );
+        }
       },
     );
     return episodesDatabase;
@@ -276,7 +291,7 @@ class RecentlyWatchedEpisodeController {
 
   void _createDb(Database db, int newVersion) async {
     await db.execute(
-        'CREATE TABLE $tableName($colId INTEGER PRIMARY KEY, $colSeriesId INTEGER, $colTitle TEXT, $colEpisodeTitle TEXT, $colEpisodeNum INTEGER, $colSeasonNum INTEGER, $colElapsed NUMERIC, $colRemaining NUMERIC, $colPosterPath TEXT, $colBackdropPath TEXT, $colDateAdded TEXT, $_updatedAtCol INTEGER, $_deletedAtCol INTEGER, $_syncedCol INTEGER NOT NULL DEFAULT 0)');
+        'CREATE TABLE $tableName($colId INTEGER PRIMARY KEY, $colSeriesId INTEGER, $colTitle TEXT, $colEpisodeTitle TEXT, $colEpisodeNum INTEGER, $colSeasonNum INTEGER, $colElapsed NUMERIC, $colRemaining NUMERIC, $colPosterPath TEXT, $colBackdropPath TEXT, $colDateAdded TEXT, $_providerCodeCol TEXT, $_updatedAtCol INTEGER, $_deletedAtCol INTEGER, $_syncedCol INTEGER NOT NULL DEFAULT 0)');
   }
 
   //this function will return all the tv in the database.

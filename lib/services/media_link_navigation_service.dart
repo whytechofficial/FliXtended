@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../mobile/screens/named_list_detail_screen.dart';
+import '../mobile/screens/shared_list_screen.dart';
 import '../provider/app_dependency_provider.dart';
+import '../provider/named_lists_provider.dart';
 import '../screens/common/live_tv_screen.dart';
 import 'daddylive_service.dart';
 
@@ -72,7 +75,7 @@ class MediaLinkNavigationService {
       key: value,
       open: (navigator) => target is LiveChannelLink
           ? _openChannel(navigator, target)
-          : navigator.push(_route(target)),
+          : navigator.push(_route(navigator, target)),
     );
   }
 
@@ -107,7 +110,32 @@ class MediaLinkNavigationService {
     );
   }
 
-  static Route<void> _route(MediaLinkTarget target) => switch (target) {
+  /// A shared list opens as the recipient's own detail screen when
+  /// this device already holds a list with that id (the owner tapping
+  /// their own link), and as the read-only shared view otherwise.
+  static Route<void> _sharedListRoute(
+    NavigatorState navigator,
+    SharedListLink target,
+  ) {
+    NamedListsProvider? lists;
+    try {
+      lists = navigator.context.read<NamedListsProvider?>();
+    } catch (_) {
+      lists = null;
+    }
+    final owned = lists?.listById(target.listId);
+    return MaterialPageRoute<void>(
+      builder: (_) => owned != null
+          ? NamedListDetailScreen(listId: owned.id)
+          : SharedListScreen(listId: target.listId),
+    );
+  }
+
+  static Route<void> _route(
+    NavigatorState navigator,
+    MediaLinkTarget target,
+  ) =>
+      switch (target) {
         TmdbMovieLink() => DeepLinkRoutes.movie(
             id: target.id,
             title: target.title,
@@ -139,6 +167,7 @@ class MediaLinkNavigationService {
         ImdbNameLink() => DeepLinkRoutes.imdbName(imdbId: target.imdbId),
         LiveChannelLink() =>
           throw StateError('Live channels open via _openChannel'),
+        SharedListLink() => _sharedListRoute(navigator, target),
       };
 
   /// Text handed over with no address in it that this app knows.

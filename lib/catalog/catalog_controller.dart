@@ -8,6 +8,7 @@ import '../provider/settings_provider.dart';
 import '../widgets/common_widgets.dart'
     show AppStreamingService, appStreamingServices;
 import 'media_item.dart';
+import 'regional_language.dart';
 
 /// The TMDB lists behind a Movies or Series page's rows, and TV Home's.
 enum CatalogList {
@@ -40,6 +41,7 @@ class CatalogData {
     required this.fresh,
     required this.serviceShelves,
     required this.genres,
+    this.regional = const <String, List<MediaItem>>{},
   });
 
   final MediaKind kind;
@@ -54,6 +56,11 @@ class CatalogData {
   final List<MediaItem> fresh;
   final List<ServiceShelf> serviceShelves;
   final List<Genres> genres;
+
+  /// The regional Top 10 rows for this page's kind, by
+  /// [RegionalLanguage] code — the same rows and order as TV Home.
+  /// Extras like the Top 10s: a missing one leaves the rest standing.
+  final Map<String, List<MediaItem>> regional;
 
   MediaItem? get featured => trending.isNotEmpty
       ? trending.first
@@ -219,6 +226,23 @@ class CatalogController {
       settings.enableProxy,
       dependencies.tmdbProxy,
     ));
+    // The regional Top 10s, one discover per language: extras, so each
+    // failing on its own like every other extra row. TV Home fetches the
+    // same queries; the catalog page shows only its own kind.
+    final regionalFutures = <Future<List<MediaItem>>>[
+      for (final regional in RegionalLanguage.values)
+        _fetch(
+          kind,
+          isMovie
+              ? Endpoints.discoverMoviesByLanguageUrl(language, regional.code)
+              : Endpoints.discoverSeriesByLanguageUrl(language, regional.code),
+          settings,
+          dependencies,
+        ).then(
+          (items) => items.take(10).toList(growable: false),
+          onError: (Object _) => <MediaItem>[],
+        ),
+    ];
     final lists = await Future.wait(<Future<List<MediaItem>>>[
       row(CatalogList.trendingWeek),
       row(CatalogList.popular),
@@ -237,6 +261,11 @@ class CatalogController {
       genres: (await genres)
           .where((genre) => genre.genreID != null && genre.genreName != null)
           .toList(growable: false),
+      regional: <String, List<MediaItem>>{
+        for (var i = 0; i < RegionalLanguage.values.length; i++)
+          RegionalLanguage.values[i].code:
+              (await regionalFutures[i]).toList(growable: false),
+      },
     );
   }
 

@@ -3,11 +3,14 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../api/endpoints.dart';
 import '../catalog/details_controller.dart';
+import '../catalog/details_play.dart';
 import '../catalog/episode_choice.dart';
 import '../catalog/media_item.dart';
 import '../catalog/up_next.dart';
 import '../functions/function.dart';
+import '../functions/network.dart';
 import '../models/movie.dart';
 import '../models/movie_stream_metadata.dart';
 import '../models/recently_watched.dart';
@@ -120,7 +123,11 @@ abstract final class MobilePlayback {
     bool Function()? onReady,
   }) async {
     // The host must be current before presenting a before-loader ad.
+    // Settings and dependencies are read before the first await, so the
+    // details fetch below never holds a context across an async gap.
     if (onReady?.call() == false) return;
+    final settings = context.read<SettingsProvider>();
+    final dependencies = context.read<AppDependencyProvider>();
     if (!await AdsterraPlaybackAdsService.instance.beforeLoader(context) ||
         !context.mounted) {
       return;
@@ -131,6 +138,29 @@ abstract final class MobilePlayback {
       'movieId=${item.id} title=${item.title} '
       'recommendationsProvided=false (fetched by MovieVideoLoader)',
     );
+    // Resume plays used to hand the loader no countries at all, so an
+    // Indian film resumed from Continue Watching kept the plain default
+    // order even with category ordering on. The details fetch is quiet:
+    // when it fails, playback proceeds exactly as before, unordered.
+    // Genre names are not in MovieDetails, so anime resumed from here
+    // still keeps the default order; Indian and Turkish do not.
+    MovieDetails? details;
+    try {
+      details = await fetchMovieDetails(
+        Endpoints.movieDetailsUrl(item.id, settings.appLanguage),
+        settings.enableProxy,
+        dependencies.tmdbProxy,
+      );
+    } catch (_) {
+      details = null;
+    }
+    final insights = details == null
+        ? null
+        : insightsMetadata(
+            genres: const <String>[],
+            movie: details,
+            originalLanguage: movie?.originalLanguage,
+          );
     final metadata = MovieStreamMetadata(
       backdropPath: item.backdropPath,
       elapsed: elapsed,
@@ -141,7 +171,11 @@ abstract final class MobilePlayback {
           int.tryParse(item.year ?? '') ?? item.recentMovie?.releaseYear ?? 0,
       isAdult: movie?.adult,
       releaseDate: item.releaseDate ?? movie?.releaseDate,
+      genres: insights?.genres ?? const <String>[],
+      languages: insights?.languages ?? const <String>[],
+      countries: insights?.countries ?? const <String>[],
     );
+    if (!context.mounted) return;
     return Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => MovieVideoLoader(
@@ -186,6 +220,17 @@ abstract final class MobilePlayback {
         return;
       }
       final episode = choice.episode;
+      // Same gap as the movie path above: the series details are already
+      // loaded here, so their countries and languages ride along. Genre
+      // names are not in TVDetails, so anime resumed from here still
+      // keeps the default order; Indian and Turkish do not.
+      final seriesInsights = details.seriesDetails == null
+          ? null
+          : insightsMetadata(
+              genres: const <String>[],
+              series: details.seriesDetails,
+              originalLanguage: item.series?.originalLanguage,
+            );
       await Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
           builder: (_) => TVVideoLoader(
@@ -201,6 +246,9 @@ abstract final class MobilePlayback {
               seriesName: item.title,
               tvId: item.id,
               airDate: episode.airDate,
+              genres: seriesInsights?.genres ?? const <String>[],
+              languages: seriesInsights?.languages ?? const <String>[],
+              countries: seriesInsights?.countries ?? const <String>[],
               seasonEpisodes: choice.seasonEpisodes
                   .where((episode) => episode.episodeId != null)
                   .map(EpisodeMetadata.fromEpisodeList)

@@ -191,6 +191,7 @@ class MovieDetails {
   int? revenue;
   int? id;
   dynamic imdbId;
+  num? voteAverage;
 
   List<ProductionCompanies>? productionCompanies;
   List<ProductionCountries>? productionCountries;
@@ -210,6 +211,7 @@ class MovieDetails {
     this.productionCountries,
     this.spokenLanguages,
     this.imdbId,
+    this.voteAverage,
     /*this.belongsToCollection*/
   });
   MovieDetails.fromJson(Map<String, dynamic> json) {
@@ -221,6 +223,7 @@ class MovieDetails {
     imdbId = json['imdb_id'];
     isAdult = json['adult'];
     id = json['id'];
+    voteAverage = json['vote_average'];
     // belongsToCollection = json['belongs_to_collection'];
     originalTitle = json['original_title'];
     if (json['production_companies'] != null) {
@@ -252,6 +255,7 @@ class MovieDetails {
       data['production_countries'] =
           productionCountries?.map((v) => v.toJson()).toList();
     }
+    if (voteAverage != null) data['vote_average'] = voteAverage;
     return data;
   }
 }

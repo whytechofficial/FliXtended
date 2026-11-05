@@ -11,6 +11,7 @@ import '../app/tv_design.dart';
 import '../focus/tv_focusable.dart';
 import '../widgets/tv_poster_wall.dart';
 import 'tv_auth_screen.dart';
+import 'tv_phone_sign_in_screen.dart';
 import '../../widgets/app_logo.dart';
 
 class TvLandingScreen extends StatefulWidget {
@@ -217,7 +218,17 @@ class _TvLandingScreenState extends State<TvLandingScreen> {
                             padding: EdgeInsets.all(compact ? 24 : 32),
                             child: FocusTraversalGroup(
                               policy: ReadingOrderTraversalPolicy(),
-                              child: Column(
+                              // Scrolls on short windows: without this the
+                              // panel overflows and "Continue as guest"
+                              // is clipped at the bottom with no way to
+                              // reach it. SingleChildScrollView sizes to
+                              // its content up to the Row's height, so
+                              // the panel keeps its content height when
+                              // it fits. Focus order is unchanged, and a
+                              // focused action scrolls itself into view
+                              // via TvFocusable's ensureVisible.
+                              child: SingleChildScrollView(
+                                child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: <Widget>[
@@ -240,11 +251,22 @@ class _TvLandingScreenState extends State<TvLandingScreen> {
                                     ),
                                   ),
                                   SizedBox(height: compact ? 20 : 28),
+                                  // The phone covers signing in without
+                                  // typing on the remote, so it leads.
+                                  _TvLandingAction(
+                                    label: tr('tv_phone_sign_in'),
+                                    icon: PhosphorIcons.qrCode(),
+                                    autofocus: true,
+                                    primary: true,
+                                    enabled: !_isGoogleSigningIn &&
+                                        !_isEnteringAsGuest,
+                                    onActivate: () =>
+                                        _open(const TvPhoneSignInScreen()),
+                                  ),
+                                  const SizedBox(height: 12),
                                   _TvLandingAction(
                                     label: tr('tv_sign_in'),
                                     icon: PhosphorIcons.signIn(),
-                                    autofocus: true,
-                                    primary: true,
                                     enabled: !_isGoogleSigningIn &&
                                         !_isEnteringAsGuest,
                                     onActivate: () =>
@@ -282,6 +304,7 @@ class _TvLandingScreenState extends State<TvLandingScreen> {
                                   ),
                                 ],
                               ),
+                            ),
                             ),
                           ),
                         ),
@@ -331,7 +354,7 @@ class _TvLandingIntro extends StatelessWidget {
         ),
         SizedBox(height: compact ? 22 : 30),
         Text(
-          'FlixQuest TV',
+          'FliXtended TV',
           style: TextStyle(
             color: palette.foreground,
             fontFamily: 'FigtreeBold',

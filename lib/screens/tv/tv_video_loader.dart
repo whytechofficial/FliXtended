@@ -22,6 +22,7 @@ import '../../controllers/recently_watched_database_controller.dart';
 import '../../provider/recently_watched_provider.dart';
 import '../../video_providers/common.dart';
 import '../../video_providers/names.dart';
+import '../../video_providers/category_order.dart';
 import '/api/endpoints.dart';
 import '/constants/api_constants.dart';
 import '/provider/app_dependency_provider.dart';
@@ -128,6 +129,20 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
       debugPrint('Unable to load scraper providers: $error');
     }
     final orderedProviders = settings.orderStreamProviders(providers);
+    // Category order, default only: same rule as the movie loader —
+    // Indian, anime and Turkish titles try their own sources first,
+    // everything else follows as fallback. Only an explicit reorder in
+    // the dialog skips this entirely, and the sticky provider below
+    // still wins over it.
+    var tryProviders = orderedProviders;
+    if (!settings.hasCustomStreamProviderOrder) {
+      tryProviders = applyCategoryOrder(
+        orderedProviders,
+        countries: widget.metadata.countries,
+        genres: widget.metadata.genres,
+        languages: widget.metadata.languages,
+      );
+    }
     // Sticky provider: when the user picked a provider for this series
     // before, the next episode starts the race there instead of from the
     // top of the order. If it has no streams, the race falls through to
@@ -137,17 +152,17 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
       final sticky = settings.getLastTvProvider(tvId);
       if (sticky != null) {
         final stickyIndex =
-            orderedProviders.indexWhere((p) => p.codeName == sticky);
+            tryProviders.indexWhere((p) => p.codeName == sticky);
         if (stickyIndex > 0) {
-          final provider = orderedProviders.removeAt(stickyIndex);
-          orderedProviders.insert(0, provider);
+          final provider = tryProviders.removeAt(stickyIndex);
+          tryProviders.insert(0, provider);
         }
       }
     }
     if (!mounted) return;
     setState(() {
-      videoProviders = orderedProviders;
-      providerStates = orderedProviders
+      videoProviders = tryProviders;
+      providerStates = tryProviders
           .map(
             (provider) => ProviderLoadState(
               codeName: provider.codeName,
@@ -595,6 +610,7 @@ class _TVVideoLoaderState extends State<TVVideoLoader> {
               contentId: widget.metadata.tvId,
               seasonNumber: season,
               episodeNumber: episode,
+              episodeId: widget.metadata.episodeId,
               subtitleTrackUrl: subtitleTrack?.url,
               subtitleTrackName: subtitleTrack?.language,
               subtitleTrackHeaders: subtitleTrack?.headers ?? const {},
